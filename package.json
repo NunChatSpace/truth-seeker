@@ -1,0 +1,13 @@
+{
+  "name": "truth-seeker",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Always-on evidence discipline for AI coding and analysis agents.",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

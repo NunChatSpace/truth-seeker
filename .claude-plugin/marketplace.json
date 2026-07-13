@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "truth-seeker",
+  "description": "Always-on evidence discipline for analysis, root-cause investigation, and implementation.",
+  "owner": {
+    "name": "NunChatSpace",
+    "url": "https://github.com/NunChatSpace"
+  },
+  "plugins": [
+    {
+      "name": "truth-seeker",
+      "description": "Seek the truth without drowning in the search.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}

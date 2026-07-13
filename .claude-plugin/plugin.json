@@ -1,0 +1,10 @@
+{
+  "name": "truth-seeker",
+  "version": "0.1.0",
+  "description": "Always-on evidence discipline for analysis, root-cause investigation, and implementation.",
+  "author": {
+    "name": "NunChatSpace",
+    "url": "https://github.com/NunChatSpace"
+  },
+  "hooks": "./hooks.json"
+}

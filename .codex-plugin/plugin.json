@@ -1,0 +1,36 @@
+{
+  "name": "truth-seeker",
+  "version": "0.1.0",
+  "description": "Always-on evidence discipline for analysis, root-cause investigation, and implementation.",
+  "author": {
+    "name": "NunChatSpace",
+    "url": "https://github.com/NunChatSpace"
+  },
+  "homepage": "https://github.com/NunChatSpace/truth-seeker",
+  "repository": "https://github.com/NunChatSpace/truth-seeker",
+  "license": "MIT",
+  "keywords": [
+    "truth-seeking",
+    "root-cause-analysis",
+    "verification",
+    "agent-discipline"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Truth Seeker",
+    "shortDescription": "Evidence-first agent discipline",
+    "longDescription": "Keeps agents explicit about facts, assumptions, unknowns, root causes, retries, approvals, and verification without drowning in investigation.",
+    "developerName": "NunChatSpace",
+    "category": "Productivity",
+    "capabilities": [
+      "Instructions",
+      "Lifecycle hooks"
+    ],
+    "websiteURL": "https://github.com/NunChatSpace/truth-seeker",
+    "defaultPrompt": [
+      "Use Truth Seeker for this investigation.",
+      "Find the root cause without unsupported guesses.",
+      "Review this work for evidence and verification gaps."
+    ]
+  }
+}

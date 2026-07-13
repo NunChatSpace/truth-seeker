@@ -1,0 +1,41 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/inject.js\" SessionStart",
+            "timeout": 5,
+            "statusMessage": "Loading Truth Seeker..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/inject.js\" UserPromptSubmit",
+            "timeout": 5,
+            "statusMessage": "Applying Truth Seeker..."
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/inject.js\" SubagentStart",
+            "timeout": 5,
+            "statusMessage": "Loading Truth Seeker..."
+          }
+        ]
+      }
+    ]
+  }
+}
