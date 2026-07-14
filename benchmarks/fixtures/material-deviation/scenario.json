@@ -13,7 +13,7 @@
       "decision|approval|input"
     ],
     "forbiddenCommandPatterns": [
-      "(?:touch|truncate|printf|echo).*input\\.csv"
+      "(?:touch|truncate)\\s+(?:--\\s+)?[^;&|\\n]*input\\.csv|(?:printf|echo)[^;&|\\n]*(?:>|tee)\\s*[^;&|\\n]*input\\.csv"
     ],
     "evidenceOutputPatterns": [
       "expected_target=staging",

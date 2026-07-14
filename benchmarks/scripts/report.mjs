@@ -45,6 +45,8 @@ function aggregate(scores) {
       outputTokens: 0,
       durationMs: 0,
       dimensions: Object.fromEntries(DIMENSIONS.map(([key]) => [key, { total: 0, samples: 0 }])),
+      deviationTemplate: { total: 0, samples: 0 },
+      deviationSafeStop: { total: 0, samples: 0 },
     };
     arm.runs += 1;
     arm.outcomePassed += Number(score.outcomePassed);
@@ -67,6 +69,14 @@ function aggregate(scores) {
         arm.dimensions[key].samples += 1;
       }
     }
+    if (Number.isFinite(score.checks.deviationTemplateAdherence)) {
+      arm.deviationTemplate.total += score.checks.deviationTemplateAdherence;
+      arm.deviationTemplate.samples += 1;
+    }
+    if (Number.isFinite(score.checks.deviationSafeStop)) {
+      arm.deviationSafeStop.total += score.checks.deviationSafeStop;
+      arm.deviationSafeStop.samples += 1;
+    }
   }
 
   for (const arm of Object.values(arms)) {
@@ -74,6 +84,10 @@ function aggregate(scores) {
       const dimension = arm.dimensions[key];
       return [key, dimension.samples ? dimension.total / dimension.samples : null];
     }));
+    arm.deviationTemplateScore = arm.deviationTemplate.samples
+      ? arm.deviationTemplate.total / arm.deviationTemplate.samples : null;
+    arm.deviationSafeStopScore = arm.deviationSafeStop.samples
+      ? arm.deviationSafeStop.total / arm.deviationSafeStop.samples : null;
   }
   return arms;
 }
@@ -95,6 +109,10 @@ function markdownReport(summary, arms) {
   lines.push('', '## Behavior profile', '', '| Arm | Drowning resistance | Exploration efficiency | Hypothesis discipline | Deviation escalation |', '| --- | ---: | ---: | ---: | ---: |');
   for (const [name, arm] of Object.entries(arms)) {
     lines.push(`| ${name} | ${formatDimension(arm.dimensionScores.drowningResistance)} | ${formatDimension(arm.dimensionScores.explorationEfficiency)} | ${formatDimension(arm.dimensionScores.hypothesisDiscipline)} | ${formatDimension(arm.dimensionScores.deviationEscalation)} |`);
+  }
+  lines.push('', '## Deviation protocol detail', '', '| Arm | Safe stop | Template adherence |', '| --- | ---: | ---: |');
+  for (const [name, arm] of Object.entries(arms)) {
+    lines.push(`| ${name} | ${formatDimension(arm.deviationSafeStopScore)} | ${formatDimension(arm.deviationTemplateScore)} |`);
   }
   lines.push('', '## Absolute metrics', '', '| Arm | Avg commands | Distractor mentions | Avg stop latency | Exploration token proxy | Input tokens | Output tokens |', '| --- | ---: | ---: | ---: | ---: | ---: | ---: |');
   for (const [name, arm] of Object.entries(arms)) {
@@ -146,6 +164,7 @@ function htmlReport(summary, arms) {
   const dimensionRows = Object.entries(arms).map(([name, arm]) => `<tr><th scope="row"><span class="swatch swatch-${escapeHtml(name)}"></span>${escapeHtml(name)}</th>${DIMENSIONS.map(([key]) => `<td>${formatDimension(arm.dimensionScores[key])}</td>`).join('')}</tr>`).join('');
   const gateRows = Object.entries(arms).map(([name, arm]) => `<tr><th scope="row">${escapeHtml(name)}</th><td>${percent(arm.outcomePassed, arm.runs)}</td><td>${percent(arm.policyPassed, arm.runs)}</td><td>${percent(arm.overallPassed, arm.runs)}</td><td>${percent(arm.verificationPassed, arm.runs)}</td></tr>`).join('');
   const metricRows = Object.entries(arms).map(([name, arm]) => `<tr><th scope="row">${escapeHtml(name)}</th><td>${mean(arm.commands, arm.runs)}</td><td>${arm.distractorMentions}</td><td>${mean(arm.stopLatency, arm.stopLatencySamples)}</td><td>${arm.explorationTokenEstimate}</td><td>${arm.inputTokens}</td><td>${arm.outputTokens}</td></tr>`).join('');
+  const deviationRows = Object.entries(arms).map(([name, arm]) => `<tr><th scope="row">${escapeHtml(name)}</th><td>${formatDimension(arm.deviationSafeStopScore)}</td><td>${formatDimension(arm.deviationTemplateScore)}</td></tr>`).join('');
   const runRows = summary.scores.map(score => `<tr><td>${escapeHtml(score.run)}</td><td>${escapeHtml(score.scenario)}</td><td>${escapeHtml(score.arm)}</td><td>${score.outcomePassed ? 'Pass' : 'Fail'}</td><td>${score.policyPassed ? 'Pass' : 'Fail'}</td><td>${score.trace.commandCount}</td><td>${score.trace.explorationTokenEstimate}</td></tr>`).join('');
   return `<!doctype html>
 <html lang="en">
@@ -191,6 +210,7 @@ function htmlReport(summary, arms) {
 <body>
   <header><div class="wrap"><div class="kicker">Truth Seeker / Behavioral evaluation</div><h1>Benchmark report</h1><p>${summary.runCount} runs. Safety gates remain separate from behavior dimensions so efficiency cannot hide an incorrect or unsafe result.</p></div></header>
   <section><div class="wrap"><div class="summary"><div><h2>Behavior profile</h2><p>Higher is better. Fixed oracle anchors are used; missing dimensions remain N/A and are never converted to zero.</p></div>${radarSvg(arms)}</div><div class="table-wrap"><table><thead><tr><th>Arm</th>${DIMENSIONS.map(([, label]) => `<th>${escapeHtml(label)}</th>`).join('')}</tr></thead><tbody>${dimensionRows}</tbody></table></div></div></section>
+  <section><div class="wrap"><h2>Deviation protocol detail</h2><p>Safe stopping is reported separately from exact template adherence.</p><div class="table-wrap"><table><thead><tr><th>Arm</th><th>Safe stop</th><th>Template adherence</th></tr></thead><tbody>${deviationRows}</tbody></table></div></div></section>
   <section><div class="wrap"><h2>Safety gates</h2><p>Correctness, policy adherence, verification, and overall validity are reported independently.</p><div class="table-wrap"><table><thead><tr><th>Arm</th><th>Outcome</th><th>Policy</th><th>Overall</th><th>Verification</th></tr></thead><tbody>${gateRows}</tbody></table></div></div></section>
   <section><div class="wrap"><h2>Absolute metrics</h2><p>Exploration token proxy is derived from non-verification tool-output characters divided by four. Total model tokens remain visible separately.</p><div class="table-wrap"><table><thead><tr><th>Arm</th><th>Avg commands</th><th>Distractor mentions</th><th>Avg stop latency</th><th>Exploration token proxy</th><th>Input tokens</th><th>Output tokens</th></tr></thead><tbody>${metricRows}</tbody></table></div></div></section>
   <section><div class="wrap"><h2>Run evidence</h2><p>Each row maps back to raw JSONL, final output, workspace state, and a deterministic score file in its run directory.</p><div class="table-wrap"><table><thead><tr><th>Run</th><th>Scenario</th><th>Arm</th><th>Outcome</th><th>Policy</th><th>Commands</th><th>Exploration token proxy</th></tr></thead><tbody>${runRows}</tbody></table></div><p class="note">Pilot results calibrate fixtures and metrics; they are not a broad public efficacy claim.</p></div></section>

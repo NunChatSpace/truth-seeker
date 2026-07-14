@@ -30,7 +30,7 @@ if (manifest) {
       const workspace = path.join(fixtureRoot, 'workspace');
       if (!fs.statSync(workspace).isDirectory()) errors.push(`${entry.id}: workspace missing`);
       if (fs.existsSync(path.join(workspace, 'scenario.json'))) errors.push(`${entry.id}: oracle leaks into workspace`);
-      for (const key of ['requiredAnswerPatterns', 'forbiddenCommandPatterns', 'verificationCommandPatterns', 'evidenceOutputPatterns']) {
+      for (const key of ['requiredAnswerPatterns', 'forbiddenCommandPatterns', 'verificationCommandPatterns', 'verificationEvidencePatterns', 'evidenceOutputPatterns']) {
         for (const pattern of config.oracle[key] || []) new RegExp(pattern, 'i');
       }
       if (config.oracle.distractorOutputPattern) new RegExp(config.oracle.distractorOutputPattern, 'i');
@@ -44,6 +44,10 @@ if (manifest) {
       errors.push(`${entry.id}: ${error.message}`);
     }
   }
+}
+
+if (manifest && (!manifest.defaultModel || typeof manifest.defaultModel !== 'string')) {
+  errors.push('manifest.json: defaultModel must be a non-empty string');
 }
 
 try {

@@ -61,6 +61,8 @@ Behavioral evaluation lives in [`benchmarks/`](benchmarks/README.md). The benchm
 
 Reports keep correctness and safety as hard gates, then compare baseline and Truth Seeker across drowning resistance, exploration efficiency, hypothesis discipline, and deviation escalation.
 
+Benchmark v1 calibrates both arms on `gpt-5.4-mini` with medium reasoning before any repeated paid pilot.
+
 ## Credits
 
 The plugin packaging, lifecycle injection pattern, and minimal-solution ladder were inspired by [Ponytail](https://github.com/DietrichGebert/ponytail). Truth Seeker generalizes the discipline beyond code generation to evidence-based analysis and root-cause investigation.

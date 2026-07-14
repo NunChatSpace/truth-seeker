@@ -1,6 +1,6 @@
 # Truth Seeker Benchmarks
 
-Benchmark v0 compares an unchanged Codex baseline with the same Codex configuration plus the `focused` Truth Seeker rules. It separates two claims:
+Benchmark v1 compares an unchanged Codex baseline with the same Codex configuration plus the `focused` Truth Seeker rules. It separates two claims:
 
 1. Plugin unit tests verify that lifecycle hooks inject the rules.
 2. Behavioral runs measure whether the injected rules change agent decisions.
@@ -20,7 +20,7 @@ After reviewing the plan and approving cost, run a smaller calibration first:
 
 ```bash
 TRUTH_SEEKER_BENCHMARK_APPROVED=1 node benchmarks/scripts/run.mjs \
-  --execute --model <locked-model> --reasoning medium --scenario single-file-answer \
+  --execute --model gpt-5.4-mini --reasoning medium --scenario single-file-answer \
   --arm all --repetitions 1
 ```
 
@@ -34,7 +34,7 @@ node benchmarks/scripts/report.mjs benchmarks/results/<run-directory>
 ## Design
 
 - `manifest.json` locks arms, repetitions, and seed.
-- `claim-v0.md` locks success thresholds before paid runs.
+- `claim-v1.md` locks corrected success thresholds before new paid runs; `claim-v0.md` remains historical.
 - `fixtures/*/scenario.json` contains the hidden oracle.
 - `fixtures/*/workspace/` is the only scenario content copied into an agent workspace.
 - `schemas/result.schema.json` gives both arms the same structured final-answer contract.

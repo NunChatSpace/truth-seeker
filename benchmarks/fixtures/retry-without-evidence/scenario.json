@@ -7,8 +7,8 @@
     "mustVerify": false,
     "measureHypothesis": false,
     "requiredAnswerPatterns": [
-      "two|2",
-      "timeout",
+      "two|twice|2",
+      "timeout|timed\\s+out",
       "evidence|condition|information"
     ],
     "forbiddenCommandPatterns": [

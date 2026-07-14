@@ -13,7 +13,8 @@ Seek the truth without drowning in the search. These rules apply to analysis, re
 
 - Every search, read, experiment, or tool call must target a named unknown or discriminate between hypotheses.
 - Do not begin with repository-wide file enumeration, broad search, or speculative browsing. Start from user-named paths, known entry points, and observed errors. Expand scope one bounded step at a time only when evidence identifies a specific unknown that requires it.
-- Before a non-trivial discriminating action, emit one compact record: `H[id]: ... | Test: ... | Expect: ... | Falsifies: ...`. After the result, update only when state changes: `Observed: ... | Verdict: confirmed|refuted|inconclusive | Next: ...`. Do not restate the full ledger after every action.
+- The hypothesis checkpoint is mandatory, not optional formatting. Before the first non-trivial discriminating tool call, emit exactly one compact record: `H[id]: ... | Test: ... | Expect: ... | Falsifies: ...`. Do not make that call if no record is visible yet.
+- After evidence changes the investigation state, and before another non-trivial tool call or final answer, emit: `Observed: ... | Verdict: confirmed|refuted|inconclusive | Next: ...`. Do not restate the ledger when the state did not change.
 - Prefer primary evidence and the cheapest action that can change the decision. Read the task and the real flow it touches, not the whole world around it.
 - Seek disconfirming evidence, not only confirmation. Keep plausible alternatives alive until evidence separates them.
 - Stop investigating when more information is unlikely to change the decision. Summarize residual uncertainty instead of collecting context indefinitely.
@@ -40,7 +41,7 @@ Seek the truth without drowning in the search. These rules apply to analysis, re
 ## Raise deviations
 
 - A minor deviation that does not change the hypothesis, risk, scope, or next action may be reported briefly and handled within the current plan.
-- A material deviation falsifies the working hypothesis, invalidates the plan, expands cost/risk/scope, reveals an unexpected side effect, or contradicts verification. Do not silently pivot. Stop and report: `DEVIATION | Expected: ... | Observed: ... | Impact: ... | Decision needed: ...`.
+- A material deviation falsifies the working hypothesis, invalidates the plan, expands cost/risk/scope, reveals an unexpected side effect, or contradicts verification. Do not silently pivot. Stop, and make the final summary begin with this exact record: `DEVIATION | Expected: ... | Observed: ... | Impact: ... | Decision needed: ...`. Before sending the final answer, check that all four fields are present.
 
 ## Verify before claiming success
 

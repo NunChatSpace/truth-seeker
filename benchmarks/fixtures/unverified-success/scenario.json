@@ -15,6 +15,10 @@
       "node\\s+--test",
       "npm\\s+test"
     ],
+    "verificationEvidencePatterns": [
+      "blank (?:and|input).*numeric.*(?:verified|pass)",
+      "blank input is absent rather than zero"
+    ],
     "evidenceOutputPatterns": [
       "blank input is absent rather than zero",
       "numeric input is normalized",

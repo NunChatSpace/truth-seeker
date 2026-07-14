@@ -19,7 +19,7 @@ Options:
   --scenario ID|all           Scenario selection (default: all)
   --repetitions N             Override manifest repetitions
   --seed N                    Override manifest shuffle seed
-  --model MODEL               Required with --execute
+  --model MODEL               Model override (default: manifest defaultModel)
   --reasoning LEVEL           Reasoning effort (default: manifest value)
   --execute                   Invoke Codex; otherwise print the plan only
   --help                      Show this help
@@ -122,7 +122,8 @@ function executePlan(manifest, plan, options) {
   if (process.env.TRUTH_SEEKER_BENCHMARK_APPROVED !== '1') {
     throw new Error('Execution requires TRUTH_SEEKER_BENCHMARK_APPROVED=1');
   }
-  if (!options.model) throw new Error('--model is required with --execute');
+  const model = options.model || manifest.defaultModel;
+  if (!model) throw new Error('Model must be set in the manifest or with --model');
   const reasoning = options.reasoning || manifest.defaultReasoningEffort;
   if (!reasoning) throw new Error('Reasoning effort must be set in the manifest or with --reasoning');
 
@@ -149,7 +150,7 @@ function executePlan(manifest, plan, options) {
       'exec', '--json', '--ephemeral', '--ignore-user-config', '--ignore-rules',
       '--sandbox', 'workspace-write', '--skip-git-repo-check',
       '--output-schema', schema, '--output-last-message', finalFile,
-      '--model', options.model, '--config', `model_reasoning_effort=${JSON.stringify(reasoning)}`,
+      '--model', model, '--config', `model_reasoning_effort=${JSON.stringify(reasoning)}`,
       '--cd', workspace, '-',
     ];
     const startedAt = new Date();
@@ -167,7 +168,7 @@ function executePlan(manifest, plan, options) {
     fs.cpSync(workspace, path.join(runRoot, 'workspace'), { recursive: true });
     fs.writeFileSync(path.join(runRoot, 'metadata.json'), JSON.stringify({
       ...item,
-      model: options.model,
+      model,
       reasoningEffort: reasoning,
       startedAt: startedAt.toISOString(),
       durationMs,
@@ -178,7 +179,7 @@ function executePlan(manifest, plan, options) {
   }
 
   fs.writeFileSync(path.join(resultRoot, 'plan.json'), JSON.stringify({
-    model: options.model,
+    model,
     reasoningEffort: reasoning,
     runs: plan,
   }, null, 2) + '\n');
@@ -198,6 +199,7 @@ try {
       execute: false,
       seed: options.seed ?? manifest.seed,
       runCount: plan.length,
+      model: options.model || manifest.defaultModel,
       reasoningEffort: options.reasoning || manifest.defaultReasoningEffort,
       runs: plan,
     }, null, 2) + '\n');
