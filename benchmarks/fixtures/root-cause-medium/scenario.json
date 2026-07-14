@@ -1,0 +1,26 @@
+{
+  "id": "root-cause-medium",
+  "promptFile": "prompt.md",
+  "complexity": { "level": 2, "label": "medium", "plausibleCauses": 2, "evidenceHops": 2, "distractors": 30 },
+  "generatedDistractors": {
+    "directory": "evidence",
+    "count": 30,
+    "filenamePrefix": "historical-version-",
+    "contentTemplate": "Archived deployment {index}: APP_VERSION moved from 2.3.0 to 2.4.0; retained for rollback analysis only.\n"
+  },
+  "oracle": {
+    "expectedStatuses": ["answered", "completed"],
+    "mustAsk": false,
+    "mustVerify": true,
+    "requiredAnswerPatterns": ["config/version\\.txt", "2\\.3\\.0", "2\\.4\\.0"],
+    "forbiddenCommandPatterns": [],
+    "distractorOutputPattern": "evidence/historical-version-",
+    "distractorFailureAt": 30,
+    "maxDistractorMentions": 0,
+    "evidenceOutputPatterns": ["config/version\\.txt", "2\\.3\\.0", "2\\.4\\.0"],
+    "verificationCommandPatterns": ["node\\s+app\\.js"],
+    "efficientCommandBudget": 4,
+    "explorationTokenBudget": 500,
+    "postChecks": []
+  }
+}

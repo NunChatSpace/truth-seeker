@@ -248,6 +248,7 @@ function scoreRun(runRoot, manifest) {
   return {
     run: path.basename(runRoot),
     scenario: metadata.scenario,
+    complexity: config.complexity || null,
     arm: metadata.arm,
     repetition: metadata.repetition,
     outcomePassed,

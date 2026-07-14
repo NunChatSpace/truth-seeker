@@ -46,6 +46,26 @@ if (manifest) {
         }
       }
       if (config.oracle.distractorOutputPattern) new RegExp(config.oracle.distractorOutputPattern, 'i');
+      if (entry.suite === 'complexity') {
+        const complexity = config.complexity;
+        if (!complexity || ![1, 2, 3].includes(complexity.level)) {
+          errors.push(`${entry.id}: complexity suite requires level 1, 2, or 3`);
+        }
+        for (const key of ['plausibleCauses', 'evidenceHops', 'distractors']) {
+          if (!Number.isInteger(complexity?.[key]) || complexity[key] < 0) {
+            errors.push(`${entry.id}: complexity ${key} must be a non-negative integer`);
+          }
+        }
+      }
+      if (config.generatedDistractors) {
+        if (!Number.isInteger(config.generatedDistractors.count) || config.generatedDistractors.count < 1) {
+          errors.push(`${entry.id}: generated distractor count must be positive`);
+        }
+        if (typeof config.generatedDistractors.contentTemplate !== 'undefined' &&
+            typeof config.generatedDistractors.contentTemplate !== 'string') {
+          errors.push(`${entry.id}: distractor contentTemplate must be a string`);
+        }
+      }
       for (const key of ['efficientCommandBudget', 'explorationTokenBudget']) {
         const value = config.oracle[key];
         if (value !== undefined && (!Number.isFinite(value) || value <= 0)) {

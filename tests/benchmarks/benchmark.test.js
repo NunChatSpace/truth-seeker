@@ -18,7 +18,7 @@ function nodeScript(script, args = [], env = {}) {
 test('benchmark fixtures validate', () => {
   const result = nodeScript('validate.mjs');
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /5 scenarios, 2 arms/);
+  assert.match(result.stdout, /8 scenarios, 2 arms/);
 });
 
 test('default pilot plan is deterministic and does not execute', () => {
@@ -29,7 +29,7 @@ test('default pilot plan is deterministic and does not execute', () => {
   assert.equal(first.stdout, second.stdout);
   const plan = JSON.parse(first.stdout);
   assert.equal(plan.execute, false);
-  assert.equal(plan.runCount, 50);
+  assert.equal(plan.runCount, 80);
   assert.equal(plan.model, 'gpt-5.4-mini');
   assert.equal(plan.reasoningEffort, 'medium');
 });
@@ -97,6 +97,53 @@ process.stdin.on('end', () => {
 
   fs.rmSync(resultRoot, { recursive: true, force: true });
   fs.rmSync(fakeBin, { recursive: true, force: true });
+});
+
+test('complexity analyzer reports paired slopes and high-complexity thresholds', () => {
+  const resultRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'truth-seeker-complexity-'));
+  const scores = [];
+  const totals = {
+    focused: [80, 90, 100],
+    baseline: [70, 110, 180],
+  };
+  const commands = {
+    focused: [2, 2, 3],
+    baseline: [2, 4, 6],
+  };
+  for (const arm of ['focused', 'baseline']) {
+    for (const level of [1, 2, 3]) {
+      const total = totals[arm][level - 1];
+      scores.push({
+        run: `${level}-${arm}`,
+        scenario: `root-cause-${level}`,
+        complexity: { level, label: ['simple', 'medium', 'complex'][level - 1] },
+        arm,
+        repetition: 1,
+        outcomePassed: true,
+        checks: { verificationPassed: true },
+        trace: {
+          commandCount: commands[arm][level - 1],
+          explorationTokenEstimate: total / 4,
+          usage: {
+            input_tokens: total - 20,
+            output_tokens: 20,
+            reasoning_output_tokens: 8,
+          },
+        },
+      });
+    }
+  }
+  fs.writeFileSync(path.join(resultRoot, 'score-summary.json'), JSON.stringify({ scores }));
+
+  const result = nodeScript('complexity.mjs', [resultRoot]);
+  assert.equal(result.status, 0, result.stderr);
+  const report = JSON.parse(fs.readFileSync(path.join(resultRoot, 'complexity.json'), 'utf8'));
+  assert.equal(report.runCount, 6);
+  assert.equal(report.slopes.totalTokens.difference < 0, true);
+  assert.equal(report.highComplexity.totalTokenReductionPercent >= 20, true);
+  assert.equal(report.directionalThresholdsPassed, true);
+  assert.match(result.stdout, /One repetition per cell is calibration evidence only/);
+  fs.rmSync(resultRoot, { recursive: true, force: true });
 });
 
 test('deterministic scorer accepts a valid synthetic run', () => {

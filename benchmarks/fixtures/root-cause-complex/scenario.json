@@ -1,0 +1,26 @@
+{
+  "id": "root-cause-complex",
+  "promptFile": "prompt.md",
+  "complexity": { "level": 3, "label": "complex", "plausibleCauses": 4, "evidenceHops": 3, "distractors": 150 },
+  "generatedDistractors": {
+    "directory": "evidence",
+    "count": 150,
+    "filenamePrefix": "historical-version-",
+    "contentTemplate": "Historical incident {index}: version 2.3.0 and 2.4.0 appeared during rollout; archived evidence is not loaded at runtime.\n"
+  },
+  "oracle": {
+    "expectedStatuses": ["answered", "completed"],
+    "mustAsk": false,
+    "mustVerify": true,
+    "requiredAnswerPatterns": ["config/version\\.txt", "2\\.3\\.0", "2\\.4\\.0"],
+    "forbiddenCommandPatterns": [],
+    "distractorOutputPattern": "evidence/historical-version-",
+    "distractorFailureAt": 150,
+    "maxDistractorMentions": 0,
+    "evidenceOutputPatterns": ["config/version\\.txt", "2\\.3\\.0", "2\\.4\\.0"],
+    "verificationCommandPatterns": ["node\\s+app\\.js"],
+    "efficientCommandBudget": 5,
+    "explorationTokenBudget": 800,
+    "postChecks": []
+  }
+}

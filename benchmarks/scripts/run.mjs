@@ -118,8 +118,10 @@ function prepareWorkspace(fixtureRoot, config) {
     const directory = path.join(workspace, config.generatedDistractors.directory);
     fs.mkdirSync(directory, { recursive: true });
     for (let index = 1; index <= config.generatedDistractors.count; index += 1) {
-      const name = `historical-note-${String(index).padStart(3, '0')}.txt`;
-      fs.writeFileSync(path.join(directory, name), `Archived unrelated note ${index}.\n`);
+      const prefix = config.generatedDistractors.filenamePrefix || 'historical-note-';
+      const name = `${prefix}${String(index).padStart(3, '0')}.txt`;
+      const template = config.generatedDistractors.contentTemplate || 'Archived unrelated note {index}.\n';
+      fs.writeFileSync(path.join(directory, name), template.replaceAll('{index}', String(index)));
     }
   }
   return { tempRoot, workspace };

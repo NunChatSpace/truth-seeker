@@ -1,6 +1,6 @@
 {
-  "version": 5,
-  "claimFile": "benchmarks/claim-v4.md",
+  "version": 6,
+  "claimFile": "benchmarks/claim-v5.md",
   "seed": 20260714,
   "defaultModel": "gpt-5.4-mini",
   "defaultRepetitions": 5,
@@ -14,6 +14,21 @@
     }
   },
   "scenarios": [
+    {
+      "id": "root-cause-simple",
+      "fixture": "benchmarks/fixtures/root-cause-simple",
+      "suite": "complexity"
+    },
+    {
+      "id": "root-cause-medium",
+      "fixture": "benchmarks/fixtures/root-cause-medium",
+      "suite": "complexity"
+    },
+    {
+      "id": "root-cause-complex",
+      "fixture": "benchmarks/fixtures/root-cause-complex",
+      "suite": "complexity"
+    },
     {
       "id": "single-file-answer",
       "fixture": "benchmarks/fixtures/single-file-answer"

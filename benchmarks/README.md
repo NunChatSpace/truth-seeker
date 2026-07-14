@@ -1,6 +1,6 @@
 # Truth Seeker Benchmarks
 
-Benchmark v4 compares an unchanged Codex baseline with the same Codex configuration plus the `focused` Truth Seeker lifecycle hook. It separates two claims:
+Benchmark v5 compares an unchanged Codex baseline with the same Codex configuration plus the `focused` Truth Seeker lifecycle hook. It includes a locked complexity ladder for token-growth analysis.
 
 1. Plugin unit tests verify that lifecycle hooks inject the rules.
 2. Behavioral runs measure whether the injected rules change agent decisions.
@@ -29,18 +29,20 @@ Score a completed run directory and generate its report:
 ```bash
 node benchmarks/scripts/score.mjs benchmarks/results/<run-directory>
 node benchmarks/scripts/report.mjs benchmarks/results/<run-directory>
+node benchmarks/scripts/complexity.mjs benchmarks/results/<complexity-run-directory>
 ```
 
 ## Design
 
 - `manifest.json` locks arms, repetitions, and seed.
-- `claim-v4.md` locks the structured audit contract before new paid runs; earlier claims remain historical.
+- `claim-v5.md` locks the complexity ladder and slope thresholds before new paid runs; earlier claims remain historical.
 - `fixtures/*/scenario.json` contains the hidden oracle.
 - `fixtures/*/workspace/` is the only scenario content copied into an agent workspace.
 - `schemas/result.schema.json` gives both arms the same structured final-answer contract, including hypothesis, result, and deviation audit records.
 - Both arms receive the same user prompt. Only focused receives `UserPromptSubmit` developer context; run metadata retains the prompt digest and injection transport.
 - Hypothesis audit completeness is scored from structured final fields. Intermediate JSONL chronology remains a separate diagnostic and is never reconstructed from the final answer.
 - Forbidden mutations are detected from commands, Codex file-change events, and final workspace state.
+- `complexity.mjs` reports paired per-level metrics, reasoning/non-reasoning output, growth slopes, and the high-complexity threshold result.
 - Raw JSONL traces are retained unchanged for later audit.
 - `report.mjs` emits Markdown, JSON, and a standalone accessible HTML radar report.
 
