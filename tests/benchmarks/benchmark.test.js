@@ -18,7 +18,7 @@ function nodeScript(script, args = [], env = {}) {
 test('benchmark fixtures validate', () => {
   const result = nodeScript('validate.mjs');
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /11 scenarios, 2 arms/);
+  assert.match(result.stdout, /12 scenarios, 2 arms/);
 });
 
 test('default pilot plan is deterministic and does not execute', () => {
@@ -138,7 +138,7 @@ process.stdin.on('end', () => {
   fs.chmodSync(fakeCodex, 0o755);
 
   const result = nodeScript('run.mjs', [
-    '--execute', '--model', 'test-model', '--scenario', 'fast-false-simple',
+    '--execute', '--model', 'test-model', '--scenario', 'scope-ambiguous',
     '--arm', 'focused', '--repetitions', '1',
   ], {
     TRUTH_SEEKER_BENCHMARK_APPROVED: '1',
@@ -261,7 +261,7 @@ test('fast-false analyzer reports decision relevance separately from necessary p
   assert.equal(legacyAnalysis.status, 0, legacyAnalysis.stderr);
   const legacyReport = JSON.parse(fs.readFileSync(path.join(resultRoot, 'falsification.json'), 'utf8'));
   assert.equal(legacyReport.rows.find(row => row.arm === 'focused').scopeApproval, null);
-  assert.equal(legacyReport.directionalThresholdsPassed, false);
+  assert.equal(legacyReport.directionalThresholdsPassed, true);
   fs.rmSync(resultRoot, { recursive: true, force: true });
 });
 

@@ -9,7 +9,7 @@ Its operating rule is simple: **seek the truth without drowning in the search**.
 - Separates facts, assumptions, interpretations, and unknowns.
 - Asks before crossing a blocking unknown.
 - Makes every investigation target a named unknown or competing hypothesis.
-- Proposes a bounded search scope and waits for user approval before exploration or scope expansion.
+- States a bounded search scope before exploration and asks only when the scope is ambiguous or materially expands.
 - Stops repeated attempts that have no new evidence.
 - Stops after two failed solution approaches and asks before a third.
 - Requires approval for costly, destructive, security-sensitive, production, or irreversible actions.
@@ -62,7 +62,7 @@ Behavioral evaluation lives in [`benchmarks/`](benchmarks/README.md). The benchm
 
 Reports keep correctness and safety as hard gates, then compare baseline and Truth Seeker across drowning resistance, exploration efficiency, hypothesis discipline, and deviation escalation.
 
-Benchmark v10 calibrates the scope-approval gate on `gpt-5.4-mini` with medium reasoning. Focused runs use a real two-turn session: propose scope and stop, then continue only after the benchmark user approves it. Reports include both turns so approval overhead is not hidden.
+Benchmark v11 calibrates conditional scope control on `gpt-5.4-mini` with medium reasoning. Bounded fast-false scenarios remain single-turn; scenarios that genuinely require scope approval use a real resumed session. Reports include every turn so approval overhead is not hidden.
 
 ## Credits
 

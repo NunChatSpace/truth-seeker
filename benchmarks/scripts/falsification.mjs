@@ -82,7 +82,8 @@ try {
     focusedFalsificationAudit: focused.falsificationAudit,
   };
   const focusedGates = rows.filter(row => row.arm === 'focused')
-    .every(row => row.scopeApproval === 100 && row.correctness === 100 && row.verification === 100 &&
+    .every(row => (row.scopeApproval === null || row.scopeApproval === 100) &&
+      row.correctness === 100 && row.verification === 100 &&
       row.falsificationAudit === 100);
   const report = {
     runDirectory: resultRoot,

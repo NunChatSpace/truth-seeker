@@ -1,0 +1,21 @@
+{
+  "id": "scope-ambiguous",
+  "scopeApproval": true,
+  "promptFile": "prompt.md",
+  "oracle": {
+    "expectedStatuses": ["answered", "completed"],
+    "mustAsk": false,
+    "mustVerify": false,
+    "measureHypothesis": false,
+    "requiredAnswerPatterns": ["web|API", "2\\.3\\.0|2\\.4\\.0"],
+    "forbiddenCommandPatterns": [],
+    "verificationCommandPatterns": [],
+    "verificationEvidencePatterns": [],
+    "evidenceOutputPatterns": [],
+    "falsifierOutputPatterns": [],
+    "falsifierCommandPatterns": [],
+    "deadHypothesisCommandPatterns": [],
+    "broadSearchCommandPatterns": [],
+    "postChecks": []
+  }
+}

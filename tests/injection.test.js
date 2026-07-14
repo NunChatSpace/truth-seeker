@@ -41,11 +41,13 @@ test('the injection script emits the complete focused ruleset', () => {
   assert.match(result.stdout, /DEVIATION.*Decision needed/);
   assert.match(result.stdout, /final summary begin/);
   assert.match(result.stdout, /Focused level/);
-  assert.match(result.stdout, /SCOPE PROPOSAL.*Search:.*Exclude:.*Goal:.*Expand only if:/);
+  assert.match(result.stdout, /SCOPE.*Search:.*Exclude:.*Goal:.*Expand if:/);
+  assert.match(result.stdout, /proceed inside that scope without a separate approval turn/);
+  assert.match(result.stdout, /ask the user to approve, and stop only when existing evidence cannot bound the scope/);
   assert.match(result.stdout, /Approval given before the proposal does not satisfy this gate/);
   assert.match(result.stdout, /revised `SCOPE PROPOSAL`.*new user approval/);
   assert.match(result.stdout, /cheapest probe that could falsify it/);
-  assert.match(result.stdout, /broad search is acceptable only when its target, output bound, and stop condition were included in the approved scope/i);
+  assert.match(result.stdout, /broad search is acceptable only with a named target, output bound, and stop condition/i);
   assert.match(result.stdout, /never spend a probe on that dead path again/);
   assert.match(result.stdout, /Do not reread evidence solely to add line numbers/);
 });

@@ -1,6 +1,5 @@
 {
   "id": "fast-false-medium",
-  "scopeApproval": true,
   "promptFile": "prompt.md",
   "complexity": { "level": 2, "label": "medium", "plausibleCauses": 2, "evidenceHops": 2, "distractors": 30 },
   "generatedDistractors": {

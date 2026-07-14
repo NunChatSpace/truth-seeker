@@ -1,6 +1,6 @@
 {
-  "version": 11,
-  "claimFile": "benchmarks/claim-v10.md",
+  "version": 12,
+  "claimFile": "benchmarks/claim-v11.md",
   "seed": 20260714,
   "defaultModel": "gpt-5.4-mini",
   "defaultRepetitions": 5,
@@ -63,6 +63,12 @@
     {
       "id": "material-deviation",
       "fixture": "benchmarks/fixtures/material-deviation"
+    },
+    {
+      "id": "scope-ambiguous",
+      "fixture": "benchmarks/fixtures/scope-ambiguous",
+      "suite": "scope-control",
+      "default": false
     }
   ]
 }

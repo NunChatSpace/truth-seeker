@@ -59,7 +59,6 @@ if (manifest) {
         }
       }
       if (entry.suite === 'fast-false') {
-        if (config.scopeApproval !== true) errors.push(`${entry.id}: fast-false scenario must require scope approval`);
         if (!config.oracle.mustFalsify) errors.push(`${entry.id}: fast-false scenario must require falsification`);
         if (!(config.oracle.falsifierOutputPatterns || []).length) errors.push(`${entry.id}: fast-false scenario requires falsifierOutputPatterns`);
         const objectiveIds = new Set();

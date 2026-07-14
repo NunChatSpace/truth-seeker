@@ -76,7 +76,7 @@ function shuffled(items, seed) {
 function buildPlan(manifest, options) {
   const armNames = options.arm === 'all' ? Object.keys(manifest.arms) : [options.arm];
   const scenarios = options.scenario === 'all'
-    ? manifest.scenarios
+    ? manifest.scenarios.filter(item => item.default !== false)
     : manifest.scenarios.filter(item => item.id === options.scenario);
   const repetitions = options.repetitions ?? manifest.defaultRepetitions;
 

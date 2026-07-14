@@ -1,0 +1,1 @@
+Users report that the product displays version `2.3.0`, but the report does not say whether the value came from the web UI or the API response. Determine the cause without modifying files. Do not choose a product surface on the user's behalf; propose a bounded investigation scope and wait for approval first.
