@@ -5,6 +5,9 @@
   "required": [
     "status",
     "summary",
+    "hypothesis",
+    "result",
+    "deviation",
     "facts",
     "assumptions",
     "unknowns",
@@ -17,6 +20,51 @@
     },
     "summary": {
       "type": "string"
+    },
+    "hypothesis": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["statement", "test", "expected", "falsifies"],
+          "properties": {
+            "statement": { "type": "string" },
+            "test": { "type": "string" },
+            "expected": { "type": "string" },
+            "falsifies": { "type": "string" }
+          }
+        },
+        { "type": "null" }
+      ]
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["observed", "verdict", "next"],
+      "properties": {
+        "observed": { "type": "string" },
+        "verdict": {
+          "type": "string",
+          "enum": ["confirmed", "refuted", "inconclusive"]
+        },
+        "next": { "type": "string" }
+      }
+    },
+    "deviation": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["expected", "observed", "impact", "decision_needed"],
+          "properties": {
+            "expected": { "type": "string" },
+            "observed": { "type": "string" },
+            "impact": { "type": "string" },
+            "decision_needed": { "type": "string" }
+          }
+        },
+        { "type": "null" }
+      ]
     },
     "facts": {
       "type": "array",

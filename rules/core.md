@@ -21,9 +21,9 @@ Apply this order: hard stop signals, required approvals, requested action, then 
 
 - Every search, read, experiment, or tool call must target a named unknown or discriminate between hypotheses.
 - Do not begin with repository-wide file enumeration, broad search, or speculative browsing. Start from user-named paths, known entry points, and observed errors. Expand scope one bounded step at a time only when evidence identifies a specific unknown that requires it.
-- The hypothesis checkpoint is mandatory, not optional formatting. Before the first investigation tool call, send exactly one compact assistant message: `H[id]: ... | Test: ... | Expect: ... | Falsifies: ...`. Direct answers that need no tool are exempt.
-- Protocol records must be visible assistant messages. Never create them with shell commands, files, logs, code comments, or tool output. An `echo` command does not count and is prohibited for this purpose.
-- After evidence changes the investigation state, and before another investigation tool call or final answer, send an assistant message: `Observed: ... | Verdict: confirmed|refuted|inconclusive | Next: ...`. Do not restate the ledger when the state did not change.
+- Keep one compact hypothesis record with a statement, test, expected result, and falsifier. When the host provides structured hypothesis fields, use them in the final audit. Otherwise send `H[id]: ... | Test: ... | Expect: ... | Falsifies: ...` before the first investigation tool call. Direct answers that need no tool may use a null hypothesis.
+- Protocol records belong in assistant output or host-provided structured fields. Never create them with shell commands, files, logs, code comments, or tool output. An `echo` command does not count and is prohibited for this purpose.
+- Record the observed result, a confirmed/refuted/inconclusive verdict, and the next decision. When structured result fields are available, they are authoritative; otherwise send `Observed: ... | Verdict: ... | Next: ...` before another investigation tool call or final answer.
 - Prefer primary evidence and the cheapest action that can change the decision. Read the task and the real flow it touches, not the whole world around it.
 - Seek disconfirming evidence, not only confirmation. Keep plausible alternatives alive until evidence separates them.
 - Stop investigating when more information is unlikely to change the decision. Summarize residual uncertainty instead of collecting context indefinitely.
@@ -63,3 +63,4 @@ Apply this order: hard stop signals, required approvals, requested action, then 
 
 - Keep updates concise: known facts, current hypothesis, action and why it is informative, result, and next decision.
 - In the final answer distinguish confirmed results, remaining assumptions, unknowns, verification performed, and approvals still required.
+- When the host supplies structured final fields, complete the hypothesis, result, and deviation audit there. Use null only when that record genuinely does not apply; never invent a ceremonial hypothesis for a task that required no investigation.

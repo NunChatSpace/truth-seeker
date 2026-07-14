@@ -36,7 +36,9 @@ test('the injection script emits the complete focused ruleset', () => {
   assert.match(result.stdout, /After two unsuccessful approaches, stop/);
   assert.match(result.stdout, /Do not begin with repository-wide file enumeration/);
   assert.match(result.stdout, /H\[id\].*Falsifies/);
-  assert.match(result.stdout, /checkpoint is mandatory/);
+  assert.match(result.stdout, /structured hypothesis fields/);
+  assert.match(result.stdout, /structured result fields are available/);
+  assert.match(result.stdout, /An `echo` command does not count/);
   assert.match(result.stdout, /DEVIATION.*Decision needed/);
   assert.match(result.stdout, /final summary begin/);
   assert.match(result.stdout, /Focused level/);

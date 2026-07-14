@@ -1,6 +1,6 @@
 {
-  "version": 4,
-  "claimFile": "benchmarks/claim-v3.md",
+  "version": 5,
+  "claimFile": "benchmarks/claim-v4.md",
   "seed": 20260714,
   "defaultModel": "gpt-5.4-mini",
   "defaultRepetitions": 5,

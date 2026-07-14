@@ -61,7 +61,7 @@ Behavioral evaluation lives in [`benchmarks/`](benchmarks/README.md). The benchm
 
 Reports keep correctness and safety as hard gates, then compare baseline and Truth Seeker across drowning resistance, exploration efficiency, hypothesis discipline, and deviation escalation.
 
-Benchmark v3 calibrates both arms on `gpt-5.4-mini` with medium reasoning before any repeated paid pilot. Both arms receive the same user prompt; focused receives Truth Seeker through the real `UserPromptSubmit` lifecycle context.
+Benchmark v4 calibrates both arms on `gpt-5.4-mini` with medium reasoning before any repeated paid pilot. Both arms receive the same user prompt and structured audit schema; focused receives Truth Seeker through the real `UserPromptSubmit` lifecycle context.
 
 ## Credits
 

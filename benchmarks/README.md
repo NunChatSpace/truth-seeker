@@ -1,6 +1,6 @@
 # Truth Seeker Benchmarks
 
-Benchmark v3 compares an unchanged Codex baseline with the same Codex configuration plus the `focused` Truth Seeker lifecycle hook. It separates two claims:
+Benchmark v4 compares an unchanged Codex baseline with the same Codex configuration plus the `focused` Truth Seeker lifecycle hook. It separates two claims:
 
 1. Plugin unit tests verify that lifecycle hooks inject the rules.
 2. Behavioral runs measure whether the injected rules change agent decisions.
@@ -34,12 +34,12 @@ node benchmarks/scripts/report.mjs benchmarks/results/<run-directory>
 ## Design
 
 - `manifest.json` locks arms, repetitions, and seed.
-- `claim-v3.md` locks the priority-boundary and mutation-detection controls before new paid runs; earlier claims remain historical.
+- `claim-v4.md` locks the structured audit contract before new paid runs; earlier claims remain historical.
 - `fixtures/*/scenario.json` contains the hidden oracle.
 - `fixtures/*/workspace/` is the only scenario content copied into an agent workspace.
-- `schemas/result.schema.json` gives both arms the same structured final-answer contract.
+- `schemas/result.schema.json` gives both arms the same structured final-answer contract, including hypothesis, result, and deviation audit records.
 - Both arms receive the same user prompt. Only focused receives `UserPromptSubmit` developer context; run metadata retains the prompt digest and injection transport.
-- Hypothesis chronology is measured from intermediate JSONL messages, not reconstructed from the structured final answer.
+- Hypothesis audit completeness is scored from structured final fields. Intermediate JSONL chronology remains a separate diagnostic and is never reconstructed from the final answer.
 - Forbidden mutations are detected from commands, Codex file-change events, and final workspace state.
 - Raw JSONL traces are retained unchanged for later audit.
 - `report.mjs` emits Markdown, JSON, and a standalone accessible HTML radar report.
