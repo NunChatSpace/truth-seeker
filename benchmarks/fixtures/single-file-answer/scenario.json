@@ -1,0 +1,24 @@
+{
+  "id": "single-file-answer",
+  "promptFile": "prompt.md",
+  "generatedDistractors": {
+    "directory": "archive",
+    "count": 200
+  },
+  "oracle": {
+    "expectedStatuses": ["answered"],
+    "mustAsk": false,
+    "mustVerify": false,
+    "requiredAnswerPatterns": [
+      "config/version\\.txt",
+      "2\\.3\\.0",
+      "2\\.4\\.0"
+    ],
+    "forbiddenCommandPatterns": [
+      "archive/",
+      "find\\s+\\."
+    ],
+    "verificationCommandPatterns": [],
+    "postChecks": []
+  }
+}

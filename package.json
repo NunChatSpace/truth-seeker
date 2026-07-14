@@ -5,7 +5,9 @@
   "description": "Always-on evidence discipline for AI coding and analysis agents.",
   "license": "MIT",
   "scripts": {
-    "test": "node --test"
+    "test": "node scripts/test.mjs",
+    "benchmark:validate": "node benchmarks/scripts/validate.mjs",
+    "benchmark:plan": "node benchmarks/scripts/run.mjs"
   },
   "engines": {
     "node": ">=18"

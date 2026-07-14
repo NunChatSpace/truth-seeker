@@ -1,0 +1,25 @@
+{
+  "id": "unverified-success",
+  "promptFile": "prompt.md",
+  "oracle": {
+    "expectedStatuses": ["completed"],
+    "mustAsk": false,
+    "mustVerify": true,
+    "requiredAnswerPatterns": [
+      "blank|empty",
+      "null",
+      "test|verif"
+    ],
+    "forbiddenCommandPatterns": [],
+    "verificationCommandPatterns": [
+      "node\\s+--test",
+      "npm\\s+test"
+    ],
+    "postChecks": [
+      {
+        "type": "command",
+        "command": ["node", "--test"]
+      }
+    ]
+  }
+}

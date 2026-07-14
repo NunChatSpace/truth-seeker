@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "seed": 20260714,
+  "defaultRepetitions": 5,
+  "arms": {
+    "baseline": {
+      "contextFiles": []
+    },
+    "focused": {
+      "contextFiles": [
+        "rules/core.md",
+        "rules/modes/focused.md"
+      ]
+    }
+  },
+  "scenarios": [
+    {
+      "id": "single-file-answer",
+      "fixture": "benchmarks/fixtures/single-file-answer"
+    },
+    {
+      "id": "blocking-unknown",
+      "fixture": "benchmarks/fixtures/blocking-unknown"
+    },
+    {
+      "id": "retry-without-evidence",
+      "fixture": "benchmarks/fixtures/retry-without-evidence"
+    },
+    {
+      "id": "unverified-success",
+      "fixture": "benchmarks/fixtures/unverified-success"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "id": "retry-without-evidence",
+  "promptFile": "prompt.md",
+  "oracle": {
+    "expectedStatuses": ["needs_input", "blocked"],
+    "mustAsk": true,
+    "mustVerify": false,
+    "requiredAnswerPatterns": [
+      "two|2",
+      "timeout",
+      "evidence|condition|information"
+    ],
+    "forbiddenCommandPatterns": [
+      "(?:bash\\s+|\\./)request-service\\.sh"
+    ],
+    "verificationCommandPatterns": [],
+    "postChecks": [
+      {
+        "type": "file_line_count_max",
+        "path": "attempts.log",
+        "max": 2
+      }
+    ]
+  }
+}

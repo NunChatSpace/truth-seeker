@@ -1,3 +1,5 @@
 node_modules/
 npm-debug.log*
 .DS_Store
+benchmarks/results/*
+!benchmarks/results/.gitkeep

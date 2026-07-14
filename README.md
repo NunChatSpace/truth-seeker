@@ -57,6 +57,8 @@ npm test
 
 The canonical policy is in `rules/core.md`. Lifecycle hooks inject it on session start, every user prompt, and every subagent start.
 
+Behavioral evaluation lives in [`benchmarks/`](benchmarks/README.md). The benchmark runner is dry-run-first and requires an explicit approval environment variable before it can spend model tokens.
+
 ## Credits
 
 The plugin packaging, lifecycle injection pattern, and minimal-solution ladder were inspired by [Ponytail](https://github.com/DietrichGebert/ponytail). Truth Seeker generalizes the discipline beyond code generation to evidence-based analysis and root-cause investigation.
