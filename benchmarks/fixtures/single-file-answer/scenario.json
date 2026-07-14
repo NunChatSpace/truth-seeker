@@ -16,6 +16,8 @@
     ],
     "forbiddenCommandPatterns": [],
     "distractorOutputPattern": "archive/historical-note-",
+    "distractorPathPattern": "archive/historical-note-[0-9]+\\.txt",
+    "broadSearchCommandPatterns": ["\\brg\\b[^\\n]*(?:\\s|[\"'])(?:\\.|\\./)(?:\\s|[\"']|$)", "\\bfind\\s+(?:\\.|\\./)(?:\\s|$)"],
     "maxDistractorMentions": 0,
     "evidenceOutputPatterns": [
       "config/version\\.txt",

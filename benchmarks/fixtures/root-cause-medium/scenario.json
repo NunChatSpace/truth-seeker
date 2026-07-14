@@ -15,6 +15,8 @@
     "requiredAnswerPatterns": ["config/version\\.txt", "2\\.3\\.0", "2\\.4\\.0"],
     "forbiddenCommandPatterns": [],
     "distractorOutputPattern": "evidence/historical-version-",
+    "distractorPathPattern": "evidence/historical-version-[0-9]+\\.txt",
+    "broadSearchCommandPatterns": ["\\brg\\b[^\\n]*(?:\\s|[\"'])(?:\\.|\\./)(?:\\s|[\"']|$)", "\\bfind\\s+(?:\\.|\\./)(?:\\s|$)"],
     "distractorFailureAt": 30,
     "maxDistractorMentions": 0,
     "evidenceOutputPatterns": ["config/version\\.txt", "2\\.3\\.0", "2\\.4\\.0"],

@@ -12,6 +12,10 @@ const METRICS = {
     (score.trace.usage.output_tokens || 0) - (score.trace.usage.reasoning_output_tokens || 0),
   commands: score => score.trace.commandCount,
   explorationTokenEstimate: score => score.trace.explorationTokenEstimate,
+  preEvidenceTokenEstimate: score => score.trace.preEvidenceTokenEstimate || 0,
+  broadSearchEvents: score => score.checks.broadSearchEvents || 0,
+  uniqueDistractorFiles: score => score.checks.uniqueDistractorFiles || 0,
+  postEvidenceToolTurns: score => score.checks.postEvidenceToolTurns || 0,
 };
 
 function slope(points) {
@@ -33,11 +37,11 @@ function markdown(report) {
   const lines = [
     '# Complexity Calibration', '',
     `Runs: ${report.runCount}. Repetitions per cell: ${report.repetitionsPerCell}.`, '',
-    '| Level | Arm | Correct | Verified | Total tokens | Input | Output | Reasoning | Non-reasoning | Commands | Exploration proxy |',
-    '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+    '| Level | Arm | Correct | Verified | Total tokens | Input | Output | Reasoning | Non-reasoning | Commands | Exploration proxy | Pre-evidence proxy | Broad searches | Unique distractors | Post-evidence turns |',
+    '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
   ];
   for (const row of report.rows) {
-    lines.push(`| ${row.level} (${row.label}) | ${row.arm} | ${row.outcomeRate.toFixed(0)}% | ${row.verificationRate.toFixed(0)}% | ${row.metrics.totalTokens.toFixed(1)} | ${row.metrics.inputTokens.toFixed(1)} | ${row.metrics.outputTokens.toFixed(1)} | ${row.metrics.reasoningTokens.toFixed(1)} | ${row.metrics.nonReasoningOutputTokens.toFixed(1)} | ${row.metrics.commands.toFixed(1)} | ${row.metrics.explorationTokenEstimate.toFixed(1)} |`);
+    lines.push(`| ${row.level} (${row.label}) | ${row.arm} | ${row.outcomeRate.toFixed(0)}% | ${row.verificationRate.toFixed(0)}% | ${row.metrics.totalTokens.toFixed(1)} | ${row.metrics.inputTokens.toFixed(1)} | ${row.metrics.outputTokens.toFixed(1)} | ${row.metrics.reasoningTokens.toFixed(1)} | ${row.metrics.nonReasoningOutputTokens.toFixed(1)} | ${row.metrics.commands.toFixed(1)} | ${row.metrics.explorationTokenEstimate.toFixed(1)} | ${row.metrics.preEvidenceTokenEstimate.toFixed(1)} | ${row.metrics.broadSearchEvents.toFixed(1)} | ${row.metrics.uniqueDistractorFiles.toFixed(1)} | ${row.metrics.postEvidenceToolTurns.toFixed(1)} |`);
   }
   lines.push('', '## Growth slopes', '', '| Metric | Focused | Baseline | Focused - baseline |', '| --- | ---: | ---: | ---: |');
   for (const [metric, values] of Object.entries(report.slopes)) {
@@ -46,6 +50,8 @@ function markdown(report) {
   lines.push('', '## High-complexity paired result', '',
     `- Total-token reduction: ${report.highComplexity.totalTokenReductionPercent.toFixed(1)}%`,
     `- Command reduction: ${report.highComplexity.commandReductionPercent.toFixed(1)}%`,
+    `- Broad-search events (focused / baseline): ${report.highComplexity.focusedBroadSearchEvents.toFixed(1)} / ${report.highComplexity.baselineBroadSearchEvents.toFixed(1)}`,
+    `- Unique distractor files (focused / baseline): ${report.highComplexity.focusedUniqueDistractorFiles.toFixed(1)} / ${report.highComplexity.baselineUniqueDistractorFiles.toFixed(1)}`,
     `- Directional thresholds passed: ${report.directionalThresholdsPassed ? 'yes' : 'no'}`, '',
     'One repetition per cell is calibration evidence only; it does not provide a confidence interval.', '');
   return lines.join('\n');
@@ -108,6 +114,10 @@ try {
     commandReductionPercent: percentReduction(
       focusedHigh.metrics.commands, baselineHigh.metrics.commands,
     ),
+    focusedBroadSearchEvents: focusedHigh.metrics.broadSearchEvents,
+    baselineBroadSearchEvents: baselineHigh.metrics.broadSearchEvents,
+    focusedUniqueDistractorFiles: focusedHigh.metrics.uniqueDistractorFiles,
+    baselineUniqueDistractorFiles: baselineHigh.metrics.uniqueDistractorFiles,
   };
   const gatesPassed = rows
     .filter(row => row.arm === 'focused')
@@ -121,7 +131,9 @@ try {
     highComplexity,
     directionalThresholdsPassed: gatesPassed && slopes.totalTokens.difference < 0 &&
       highComplexity.totalTokenReductionPercent >= 20 &&
-      highComplexity.commandReductionPercent >= 30,
+      highComplexity.commandReductionPercent >= 30 &&
+      highComplexity.focusedBroadSearchEvents === 0 &&
+      highComplexity.focusedUniqueDistractorFiles === 0,
   };
   fs.writeFileSync(path.join(resultRoot, 'complexity.json'), JSON.stringify(report, null, 2) + '\n');
   fs.writeFileSync(path.join(resultRoot, 'complexity.md'), markdown(report));

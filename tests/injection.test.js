@@ -42,6 +42,10 @@ test('the injection script emits the complete focused ruleset', () => {
   assert.match(result.stdout, /DEVIATION.*Decision needed/);
   assert.match(result.stdout, /final summary begin/);
   assert.match(result.stdout, /Focused level/);
+  assert.match(result.stdout, /first probe must start from a user-named or known execution entry point/);
+  assert.match(result.stdout, /Do not use a repository-wide search as the first probe/);
+  assert.match(result.stdout, /Batch reads only for files or symbols already named/);
+  assert.match(result.stdout, /Do not reread evidence solely to add line numbers/);
 });
 
 test('Codex output uses additionalContext JSON', () => {

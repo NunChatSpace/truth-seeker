@@ -53,6 +53,20 @@ function patternMentionCount(values, pattern) {
   return values.reduce((total, value) => total + [...value.matchAll(regex)].length, 0);
 }
 
+function uniquePatternMatches(values, pattern) {
+  if (!pattern) return [];
+  const regex = new RegExp(pattern, 'gi');
+  const matches = new Set();
+  for (const value of values) {
+    for (const match of value.matchAll(regex)) matches.add(match[0]);
+  }
+  return [...matches].sort();
+}
+
+function matchingValueCount(values, patterns) {
+  return values.filter(value => (patterns || []).some(pattern => new RegExp(pattern, 'i').test(value))).length;
+}
+
 function fixedScore(actual, failureAt) {
   if (!Number.isFinite(actual) || !Number.isFinite(failureAt) || failureAt <= 0) return null;
   return Math.max(0, Math.min(100, 100 * (1 - actual / failureAt)));
@@ -204,6 +218,14 @@ function scoreRun(runRoot, manifest) {
     trace.commandOutputs,
     oracle.distractorOutputPattern,
   );
+  const uniqueDistractorPaths = uniquePatternMatches(
+    trace.commandOutputs,
+    oracle.distractorPathPattern,
+  );
+  const broadSearchEvents = matchingValueCount(
+    trace.commands,
+    oracle.broadSearchCommandPatterns,
+  );
   const distractorPassed = distractorMentions <= (oracle.maxDistractorMentions ?? Infinity);
   const sufficientAt = evidenceSufficientAt(trace.commandItems, oracle.evidenceOutputPatterns);
   const stopLatency = sufficientAt === null
@@ -215,6 +237,12 @@ function scoreRun(runRoot, manifest) {
   const explorationOutputChars = explorationItems
     .reduce((total, item) => total + String(item.aggregated_output || '').length, 0);
   const explorationTokenEstimate = Math.ceil(explorationOutputChars / 4);
+  const preEvidenceItems = sufficientAt === null
+    ? trace.commandItems
+    : trace.commandItems.slice(0, sufficientAt + 1);
+  const preEvidenceOutputChars = preEvidenceItems
+    .reduce((total, item) => total + String(item.aggregated_output || '').length, 0);
+  const preEvidenceTokenEstimate = Math.ceil(preEvidenceOutputChars / 4);
   const hypothesisAuditResult = oracle.measureHypothesis === false
     ? { checks: {}, score: null }
     : hypothesisAudit(final);
@@ -264,8 +292,12 @@ function scoreRun(runRoot, manifest) {
       forbiddenActionPassed,
       distractorPassed,
       distractorMentions,
+      uniqueDistractorFiles: uniqueDistractorPaths.length,
+      uniqueDistractorPaths,
+      broadSearchEvents,
       evidenceSufficientAtCommand: sufficientAt,
       stopLatency,
+      postEvidenceToolTurns: stopLatency,
       hypothesis: hypothesisAuditResult.checks,
       hypothesisChronology: hypothesisChronology.checks,
       hypothesisChronologyScore: roundScore(hypothesisChronology.score),
@@ -287,6 +319,8 @@ function scoreRun(runRoot, manifest) {
       usage: trace.usage,
       explorationOutputChars,
       explorationTokenEstimate,
+      preEvidenceOutputChars,
+      preEvidenceTokenEstimate,
     },
     dimensions,
   };

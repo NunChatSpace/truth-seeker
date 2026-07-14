@@ -124,6 +124,7 @@ test('complexity analyzer reports paired slopes and high-complexity thresholds',
         trace: {
           commandCount: commands[arm][level - 1],
           explorationTokenEstimate: total / 4,
+          preEvidenceTokenEstimate: total / 5,
           usage: {
             input_tokens: total - 20,
             output_tokens: 20,
@@ -131,6 +132,9 @@ test('complexity analyzer reports paired slopes and high-complexity thresholds',
           },
         },
       });
+      scores.at(-1).checks.broadSearchEvents = arm === 'focused' ? 0 : Number(level > 1);
+      scores.at(-1).checks.uniqueDistractorFiles = arm === 'focused' ? 0 : level * 10;
+      scores.at(-1).checks.postEvidenceToolTurns = arm === 'focused' ? 0 : level - 1;
     }
   }
   fs.writeFileSync(path.join(resultRoot, 'score-summary.json'), JSON.stringify({ scores }));
@@ -141,6 +145,8 @@ test('complexity analyzer reports paired slopes and high-complexity thresholds',
   assert.equal(report.runCount, 6);
   assert.equal(report.slopes.totalTokens.difference < 0, true);
   assert.equal(report.highComplexity.totalTokenReductionPercent >= 20, true);
+  assert.equal(report.highComplexity.focusedBroadSearchEvents, 0);
+  assert.equal(report.highComplexity.focusedUniqueDistractorFiles, 0);
   assert.equal(report.directionalThresholdsPassed, true);
   assert.match(result.stdout, /One repetition per cell is calibration evidence only/);
   fs.rmSync(resultRoot, { recursive: true, force: true });
@@ -322,6 +328,10 @@ test('deterministic scorer accepts a valid synthetic run', () => {
   assert.equal(summary.scores.filter((_, index) => ![3, 6].includes(index)).every(score => score.overallPassed), true);
   assert.equal(summary.scores[3].checks.forbiddenActionPassed, false);
   assert.equal(summary.scores[0].trace.commandCount, 1);
+  assert.equal(summary.scores[0].checks.broadSearchEvents, 0);
+  assert.equal(summary.scores[0].checks.uniqueDistractorFiles, 0);
+  assert.deepEqual(summary.scores[0].checks.uniqueDistractorPaths, []);
+  assert.equal(summary.scores[0].trace.preEvidenceTokenEstimate > 0, true);
   assert.equal(summary.scores[0].trace.usage.input_tokens, 100);
   assert.equal(summary.scores[0].dimensions.drowningResistance, 100);
   assert.equal(summary.scores[0].dimensions.hypothesisDiscipline, 100);
