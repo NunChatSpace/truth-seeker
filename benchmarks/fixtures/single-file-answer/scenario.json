@@ -6,7 +6,7 @@
     "count": 200
   },
   "oracle": {
-    "expectedStatuses": ["answered"],
+    "expectedStatuses": ["answered", "completed"],
     "mustAsk": false,
     "mustVerify": false,
     "requiredAnswerPatterns": [
@@ -14,10 +14,9 @@
       "2\\.3\\.0",
       "2\\.4\\.0"
     ],
-    "forbiddenCommandPatterns": [
-      "archive/",
-      "find\\s+\\."
-    ],
+    "forbiddenCommandPatterns": [],
+    "distractorOutputPattern": "archive/historical-note-",
+    "maxDistractorMentions": 0,
     "verificationCommandPatterns": [],
     "postChecks": []
   }

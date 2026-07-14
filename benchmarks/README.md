@@ -20,7 +20,7 @@ After reviewing the plan and approving cost, run a smaller calibration first:
 
 ```bash
 TRUTH_SEEKER_BENCHMARK_APPROVED=1 node benchmarks/scripts/run.mjs \
-  --execute --model <locked-model> --scenario single-file-answer \
+  --execute --model <locked-model> --reasoning medium --scenario single-file-answer \
   --arm all --repetitions 1
 ```
 

@@ -52,10 +52,19 @@ export function parseTrace(file) {
       malformedLines += 1;
     }
   }
+  const completedCommands = events
+    .filter(event => event.type === 'item.completed' && event.item?.type === 'command_execution')
+    .map(event => event.item);
+  const fallbackCommands = collectCommandStrings(events);
+  const turn = [...events].reverse().find(event => event.type === 'turn.completed');
   return {
     events,
     malformedLines,
-    commands: collectCommandStrings(events),
+    commands: completedCommands.length
+      ? completedCommands.map(item => item.command)
+      : fallbackCommands,
+    commandOutputs: completedCommands.map(item => item.aggregated_output || ''),
+    usage: turn?.usage || {},
   };
 }
 

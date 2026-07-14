@@ -2,6 +2,7 @@
   "version": 1,
   "seed": 20260714,
   "defaultRepetitions": 5,
+  "defaultReasoningEffort": "medium",
   "arms": {
     "baseline": {
       "contextFiles": []

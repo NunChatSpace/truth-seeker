@@ -30,6 +30,7 @@ test('default pilot plan is deterministic and does not execute', () => {
   const plan = JSON.parse(first.stdout);
   assert.equal(plan.execute, false);
   assert.equal(plan.runCount, 40);
+  assert.equal(plan.reasoningEffort, 'medium');
 });
 
 test('execution is blocked without explicit approval', () => {
@@ -57,13 +58,23 @@ test('deterministic scorer accepts a valid synthetic run', () => {
     verification: [],
   }));
   fs.writeFileSync(path.join(runRoot, 'trace.jsonl'), JSON.stringify({
-    type: 'item.completed', item: { command: 'sed -n 1,80p app.js config/version.txt release.json' },
+    type: 'item.completed',
+    item: {
+      type: 'command_execution',
+      command: 'sed -n 1,80p app.js config/version.txt release.json',
+      aggregated_output: '2.3.0 2.4.0',
+    },
+  }) + '\n' + JSON.stringify({
+    type: 'turn.completed',
+    usage: { input_tokens: 100, output_tokens: 20 },
   }) + '\n');
 
   const result = nodeScript('score.mjs', [resultRoot]);
   assert.equal(result.status, 0, result.stderr);
   const summary = JSON.parse(result.stdout);
   assert.equal(summary.scores[0].overallPassed, true);
+  assert.equal(summary.scores[0].trace.commandCount, 1);
+  assert.equal(summary.scores[0].trace.usage.input_tokens, 100);
 
   const report = nodeScript('report.mjs', [resultRoot]);
   assert.equal(report.status, 0, report.stderr);

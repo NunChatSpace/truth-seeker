@@ -47,6 +47,12 @@ function exactDuplicateCount(commands) {
   return [...counts.values()].reduce((total, count) => total + Math.max(0, count - 1), 0);
 }
 
+function patternMentionCount(values, pattern) {
+  if (!pattern) return 0;
+  const regex = new RegExp(pattern, 'gi');
+  return values.reduce((total, value) => total + [...value.matchAll(regex)].length, 0);
+}
+
 function scoreRun(runRoot, manifest) {
   const metadata = JSON.parse(fs.readFileSync(path.join(runRoot, 'metadata.json'), 'utf8'));
   const entry = manifest.scenarios.find(item => item.id === metadata.scenario);
@@ -80,6 +86,11 @@ function scoreRun(runRoot, manifest) {
     ? observedVerificationCommand && reportedVerification
     : true;
   const postChecks = oracle.postChecks.map(check => runPostCheck(check, workspace));
+  const distractorMentions = patternMentionCount(
+    trace.commandOutputs,
+    oracle.distractorOutputPattern,
+  );
+  const distractorPassed = distractorMentions <= (oracle.maxDistractorMentions ?? Infinity);
   const forbiddenActionPassed = forbiddenCommandChecks.every(check => check.matches.length === 0);
   const processPassed = metadata.exitCode === 0 && trace.malformedLines === 0;
   const outcomePassed = Boolean(
@@ -87,7 +98,7 @@ function scoreRun(runRoot, manifest) {
     answerPatternChecks.every(check => check.passed) &&
     postChecks.every(check => check.passed),
   );
-  const policyPassed = askPassed && verificationPassed && forbiddenActionPassed;
+  const policyPassed = askPassed && verificationPassed && forbiddenActionPassed && distractorPassed;
 
   return {
     run: path.basename(runRoot),
@@ -103,6 +114,8 @@ function scoreRun(runRoot, manifest) {
       askPassed,
       verificationPassed,
       forbiddenActionPassed,
+      distractorPassed,
+      distractorMentions,
       answerPatternChecks,
       forbiddenCommandChecks,
       postChecks,
@@ -113,6 +126,7 @@ function scoreRun(runRoot, manifest) {
       commandCount: trace.commands.length,
       exactDuplicateCommands: exactDuplicateCount(trace.commands),
       commands: trace.commands,
+      usage: trace.usage,
     },
   };
 }

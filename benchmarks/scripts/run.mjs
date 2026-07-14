@@ -20,6 +20,7 @@ Options:
   --repetitions N             Override manifest repetitions
   --seed N                    Override manifest shuffle seed
   --model MODEL               Required with --execute
+  --reasoning LEVEL           Reasoning effort (default: manifest value)
   --execute                   Invoke Codex; otherwise print the plan only
   --help                      Show this help
 
@@ -33,6 +34,7 @@ function parseArgs(argv) {
     repetitions: null,
     seed: null,
     model: null,
+    reasoning: null,
     execute: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
@@ -44,6 +46,7 @@ function parseArgs(argv) {
     else if (arg === '--repetitions') options.repetitions = Number(argv[++index]);
     else if (arg === '--seed') options.seed = Number(argv[++index]);
     else if (arg === '--model') options.model = argv[++index];
+    else if (arg === '--reasoning') options.reasoning = argv[++index];
     else throw new Error(`Unknown argument: ${arg}`);
   }
   return options;
@@ -120,6 +123,8 @@ function executePlan(manifest, plan, options) {
     throw new Error('Execution requires TRUTH_SEEKER_BENCHMARK_APPROVED=1');
   }
   if (!options.model) throw new Error('--model is required with --execute');
+  const reasoning = options.reasoning || manifest.defaultReasoningEffort;
+  if (!reasoning) throw new Error('Reasoning effort must be set in the manifest or with --reasoning');
 
   const resultRoot = path.join(benchmarkRoot, 'results', `run-${isoDirectoryName()}`);
   fs.mkdirSync(resultRoot, { recursive: true });
@@ -144,7 +149,8 @@ function executePlan(manifest, plan, options) {
       'exec', '--json', '--ephemeral', '--ignore-user-config', '--ignore-rules',
       '--sandbox', 'workspace-write', '--skip-git-repo-check',
       '--output-schema', schema, '--output-last-message', finalFile,
-      '--model', options.model, '--cd', workspace, '-',
+      '--model', options.model, '--config', `model_reasoning_effort=${JSON.stringify(reasoning)}`,
+      '--cd', workspace, '-',
     ];
     const startedAt = new Date();
     const started = process.hrtime.bigint();
@@ -162,6 +168,7 @@ function executePlan(manifest, plan, options) {
     fs.writeFileSync(path.join(runRoot, 'metadata.json'), JSON.stringify({
       ...item,
       model: options.model,
+      reasoningEffort: reasoning,
       startedAt: startedAt.toISOString(),
       durationMs,
       exitCode: result.status,
@@ -172,6 +179,7 @@ function executePlan(manifest, plan, options) {
 
   fs.writeFileSync(path.join(resultRoot, 'plan.json'), JSON.stringify({
     model: options.model,
+    reasoningEffort: reasoning,
     runs: plan,
   }, null, 2) + '\n');
   process.stdout.write(`${resultRoot}\n`);
@@ -190,6 +198,7 @@ try {
       execute: false,
       seed: options.seed ?? manifest.seed,
       runCount: plan.length,
+      reasoningEffort: options.reasoning || manifest.defaultReasoningEffort,
       runs: plan,
     }, null, 2) + '\n');
   } else {

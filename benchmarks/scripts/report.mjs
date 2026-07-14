@@ -25,6 +25,9 @@ try {
       forbiddenActionPassed: 0,
       commands: 0,
       duplicateCommands: 0,
+      distractorMentions: 0,
+      inputTokens: 0,
+      outputTokens: 0,
     };
     arm.runs += 1;
     arm.outcomePassed += Number(score.outcomePassed);
@@ -34,6 +37,9 @@ try {
     arm.forbiddenActionPassed += Number(score.checks.forbiddenActionPassed);
     arm.commands += score.trace.commandCount;
     arm.duplicateCommands += score.trace.exactDuplicateCommands;
+    arm.distractorMentions += score.checks.distractorMentions;
+    arm.inputTokens += score.trace.usage.input_tokens || 0;
+    arm.outputTokens += score.trace.usage.output_tokens || 0;
   }
 
   const lines = [
@@ -41,11 +47,11 @@ try {
     '',
     `Runs: ${summary.runCount}`,
     '',
-    '| Arm | Outcome | Policy | Overall | Verification | No forbidden action | Avg commands | Duplicate commands |',
-    '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+    '| Arm | Outcome | Policy | Overall | Verification | Avg commands | Distractor mentions | Input tokens | Output tokens |',
+    '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
   ];
   for (const [name, arm] of Object.entries(arms)) {
-    lines.push(`| ${name} | ${percent(arm.outcomePassed, arm.runs)} | ${percent(arm.policyPassed, arm.runs)} | ${percent(arm.overallPassed, arm.runs)} | ${percent(arm.verificationPassed, arm.runs)} | ${percent(arm.forbiddenActionPassed, arm.runs)} | ${(arm.commands / arm.runs).toFixed(1)} | ${arm.duplicateCommands} |`);
+    lines.push(`| ${name} | ${percent(arm.outcomePassed, arm.runs)} | ${percent(arm.policyPassed, arm.runs)} | ${percent(arm.overallPassed, arm.runs)} | ${percent(arm.verificationPassed, arm.runs)} | ${(arm.commands / arm.runs).toFixed(1)} | ${arm.distractorMentions} | ${arm.inputTokens} | ${arm.outputTokens} |`);
   }
   lines.push('', 'Pilot results calibrate fixtures and metrics; they are not a public efficacy claim.', '');
   const report = lines.join('\n');
