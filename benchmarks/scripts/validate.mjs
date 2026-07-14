@@ -2,7 +2,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { benchmarkRoot, loadManifest, loadScenario, projectRoot } from './lib.mjs';
+import { benchmarkRoot, loadManifest, loadScenario } from './lib.mjs';
 
 const errors = [];
 let manifest;
@@ -15,9 +15,16 @@ try {
 if (manifest) {
   const ids = new Set();
   for (const [arm, config] of Object.entries(manifest.arms || {})) {
-    for (const file of config.contextFiles || []) {
-      if (!fs.existsSync(path.join(projectRoot, file))) errors.push(`arm ${arm}: missing ${file}`);
+    if (!['none', 'user-prompt-submit-hook'].includes(config.injection)) {
+      errors.push(`arm ${arm}: unsupported injection ${config.injection}`);
     }
+  }
+
+  if (manifest.arms?.baseline?.injection !== 'none') {
+    errors.push('baseline arm must not inject Truth Seeker');
+  }
+  if (manifest.arms?.focused?.injection !== 'user-prompt-submit-hook') {
+    errors.push('focused arm must use the UserPromptSubmit lifecycle hook');
   }
 
   for (const entry of manifest.scenarios || []) {

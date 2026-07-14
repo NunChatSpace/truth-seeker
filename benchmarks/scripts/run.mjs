@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -92,10 +93,20 @@ function buildPlan(manifest, options) {
   return shuffled(runs, options.seed ?? manifest.seed);
 }
 
-function treatmentContext(manifest, arm) {
-  return manifest.arms[arm].contextFiles
-    .map(file => fs.readFileSync(path.join(projectRoot, file), 'utf8').trim())
-    .join('\n\n');
+function lifecycleArgs(arm, pluginData) {
+  if (arm.injection !== 'user-prompt-submit-hook') return [];
+  const pluginRoot = projectRoot;
+  const command = [
+    'env',
+    `PLUGIN_ROOT=${JSON.stringify(pluginRoot)}`,
+    `CLAUDE_PLUGIN_ROOT=${JSON.stringify(pluginRoot)}`,
+    `PLUGIN_DATA=${JSON.stringify(pluginData)}`,
+    'node',
+    JSON.stringify(path.join(pluginRoot, 'hooks', 'inject.js')),
+    'UserPromptSubmit',
+  ].join(' ');
+  const hookConfig = `[{ hooks = [{ type = "command", command = ${JSON.stringify(command)}, timeout = 5 }] }]`;
+  return ['--config', `hooks.UserPromptSubmit=${hookConfig}`];
 }
 
 function prepareWorkspace(fixtureRoot, config) {
@@ -136,21 +147,22 @@ function executePlan(manifest, plan, options) {
     const manifestEntry = manifest.scenarios.find(entry => entry.id === item.scenario);
     const { fixtureRoot, config } = loadScenario(manifestEntry);
     const { tempRoot, workspace } = prepareWorkspace(fixtureRoot, config);
+    const pluginData = path.join(tempRoot, 'plugin-data');
     const runName = `${String(index + 1).padStart(3, '0')}-${item.scenario}-${item.arm}-r${item.repetition}`;
     const runRoot = path.join(resultRoot, runName);
     fs.mkdirSync(runRoot, { recursive: true });
 
     const basePrompt = fs.readFileSync(path.join(fixtureRoot, config.promptFile), 'utf8').trim();
-    const context = treatmentContext(manifest, item.arm);
-    const prompt = context
-      ? `Additional operating policy:\n\n${context}\n\nTask:\n${basePrompt}`
-      : basePrompt;
+    const armConfig = manifest.arms[item.arm];
+    const prompt = basePrompt;
     const finalFile = path.join(runRoot, 'final.json');
     const args = [
       'exec', '--json', '--ephemeral', '--ignore-user-config', '--ignore-rules',
+      '--dangerously-bypass-hook-trust',
       '--sandbox', 'workspace-write', '--skip-git-repo-check',
       '--output-schema', schema, '--output-last-message', finalFile,
       '--model', model, '--config', `model_reasoning_effort=${JSON.stringify(reasoning)}`,
+      ...lifecycleArgs(armConfig, pluginData),
       '--cd', workspace, '-',
     ];
     const startedAt = new Date();
@@ -174,6 +186,8 @@ function executePlan(manifest, plan, options) {
       durationMs,
       exitCode: result.status,
       signal: result.signal,
+      injection: armConfig.injection,
+      promptSha256: createHash('sha256').update(prompt).digest('hex'),
     }, null, 2) + '\n');
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }

@@ -43,6 +43,60 @@ test('execution is blocked without explicit approval', () => {
   assert.match(result.stderr, /requires TRUTH_SEEKER_BENCHMARK_APPROVED=1/);
 });
 
+test('focused execution uses lifecycle context without changing the user prompt', () => {
+  const fakeBin = fs.mkdtempSync(path.join(os.tmpdir(), 'truth-seeker-fake-codex-'));
+  const fakeCodex = path.join(fakeBin, 'codex');
+  fs.writeFileSync(fakeCodex, `#!/usr/bin/env node
+const fs = require('node:fs');
+const path = require('node:path');
+const args = process.argv.slice(2);
+const value = flag => args[args.indexOf(flag) + 1];
+let prompt = '';
+process.stdin.on('data', chunk => { prompt += chunk; });
+process.stdin.on('end', () => {
+  const workspace = value('--cd');
+  fs.writeFileSync(path.join(workspace, 'capture.json'), JSON.stringify({ args, prompt }));
+  fs.writeFileSync(value('--output-last-message'), JSON.stringify({
+    status: 'answered', summary: 'fake', facts: [], assumptions: [], unknowns: [], verification: [],
+  }));
+  process.stdout.write(JSON.stringify({ type: 'turn.completed', usage: {} }) + '\\n');
+});
+`);
+  fs.chmodSync(fakeCodex, 0o755);
+
+  const result = nodeScript('run.mjs', [
+    '--execute', '--model', 'test-model', '--scenario', 'single-file-answer',
+    '--arm', 'all', '--repetitions', '1',
+  ], {
+    TRUTH_SEEKER_BENCHMARK_APPROVED: '1',
+    PATH: `${fakeBin}${path.delimiter}${process.env.PATH}`,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const resultRoot = result.stdout.trim();
+  const runs = fs.readdirSync(resultRoot).filter(name => /^\d{3}-/.test(name));
+  const byArm = Object.fromEntries(runs.map(name => {
+    const runRoot = path.join(resultRoot, name);
+    const metadata = JSON.parse(fs.readFileSync(path.join(runRoot, 'metadata.json'), 'utf8'));
+    const capture = JSON.parse(fs.readFileSync(path.join(runRoot, 'workspace', 'capture.json'), 'utf8'));
+    return [metadata.arm, { metadata, capture }];
+  }));
+
+  assert.equal(byArm.baseline.capture.prompt, byArm.focused.capture.prompt);
+  assert.equal(byArm.baseline.metadata.promptSha256, byArm.focused.metadata.promptSha256);
+  assert.equal(byArm.baseline.metadata.injection, 'none');
+  assert.equal(byArm.focused.metadata.injection, 'user-prompt-submit-hook');
+  assert.equal(byArm.baseline.capture.args.some(arg => arg.startsWith('hooks.UserPromptSubmit=')), false);
+  const hookArg = byArm.focused.capture.args.find(arg => arg.startsWith('hooks.UserPromptSubmit='));
+  assert.match(hookArg, /hooks\/inject\.js/);
+  assert.match(hookArg, /UserPromptSubmit/);
+  assert.doesNotMatch(byArm.focused.capture.prompt, /Additional operating policy|Seek the truth without drowning/);
+  assert.equal(byArm.baseline.capture.args.includes('--dangerously-bypass-hook-trust'), true);
+  assert.equal(byArm.focused.capture.args.includes('--dangerously-bypass-hook-trust'), true);
+
+  fs.rmSync(resultRoot, { recursive: true, force: true });
+  fs.rmSync(fakeBin, { recursive: true, force: true });
+});
+
 test('deterministic scorer accepts a valid synthetic run', () => {
   const resultRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'truth-seeker-score-'));
   const runRoot = path.join(resultRoot, '001-single-file-answer-focused-r1');

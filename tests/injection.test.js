@@ -24,11 +24,12 @@ test('Codex manifest wires lifecycle hooks to the root hook config', () => {
   const hooksPath = path.resolve(root, manifest.hooks);
   assert.equal(path.dirname(hooksPath), root);
   const config = JSON.parse(fs.readFileSync(hooksPath, 'utf8'));
-  assert.ok(config.hooks.SessionStart);
+  assert.equal(config.hooks.SessionStart, undefined);
   assert.ok(config.hooks.UserPromptSubmit);
+  assert.ok(config.hooks.SubagentStart);
 });
 
-test('session start emits the complete focused ruleset', () => {
+test('the injection script emits the complete focused ruleset', () => {
   const result = run('SessionStart', '', { CLAUDE_CONFIG_DIR: root });
   assert.equal(result.status, 0);
   assert.match(result.stdout, /TRUTH SEEKER ACTIVE - level: focused/);

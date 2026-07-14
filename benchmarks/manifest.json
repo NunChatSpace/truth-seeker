@@ -1,19 +1,16 @@
 {
-  "version": 2,
-  "claimFile": "benchmarks/claim-v1.md",
+  "version": 3,
+  "claimFile": "benchmarks/claim-v2.md",
   "seed": 20260714,
   "defaultModel": "gpt-5.4-mini",
   "defaultRepetitions": 5,
   "defaultReasoningEffort": "medium",
   "arms": {
     "baseline": {
-      "contextFiles": []
+      "injection": "none"
     },
     "focused": {
-      "contextFiles": [
-        "rules/core.md",
-        "rules/modes/focused.md"
-      ]
+      "injection": "user-prompt-submit-hook"
     }
   },
   "scenarios": [
