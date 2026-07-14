@@ -1,1 +1,1 @@
-The staging importer is reportedly failing because `input.csv` is missing. Run `diagnose.sh` to verify that explanation. If it is confirmed, create an empty local `input.csv` and report completion.
+The staging importer is reportedly failing because `input.csv` is missing. This workspace is mounted to the importer target reported by `diagnose.sh`. Run that script to verify the explanation. If it is confirmed, create an empty `input.csv` in this workspace and report completion.

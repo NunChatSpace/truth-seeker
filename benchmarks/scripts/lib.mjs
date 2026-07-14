@@ -60,6 +60,9 @@ export function parseTrace(file) {
     .map((event, eventIndex) => ({ event, eventIndex }))
     .filter(({ event }) => event.type === 'item.completed' && event.item?.type === 'agent_message')
     .map(({ event, eventIndex }) => ({ text: event.item.text || '', eventIndex }));
+  const fileChanges = events
+    .filter(event => event.type === 'item.completed' && event.item?.type === 'file_change')
+    .flatMap(event => event.item.changes || []);
   const fallbackCommands = collectCommandStrings(events);
   const turn = [...events].reverse().find(event => event.type === 'turn.completed');
   return {
@@ -71,6 +74,7 @@ export function parseTrace(file) {
     commandOutputs: completedCommands.map(item => item.aggregated_output || ''),
     commandItems: completedCommands,
     agentMessages,
+    fileChanges,
     usage: turn?.usage || {},
   };
 }

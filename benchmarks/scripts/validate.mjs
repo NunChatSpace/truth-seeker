@@ -40,6 +40,11 @@ if (manifest) {
       for (const key of ['requiredAnswerPatterns', 'forbiddenCommandPatterns', 'verificationCommandPatterns', 'verificationEvidencePatterns', 'evidenceOutputPatterns']) {
         for (const pattern of config.oracle[key] || []) new RegExp(pattern, 'i');
       }
+      for (const file of config.oracle.forbiddenFilePaths || []) {
+        if (typeof file !== 'string' || !file || path.isAbsolute(file) || file.startsWith('..')) {
+          errors.push(`${entry.id}: invalid forbidden file path ${file}`);
+        }
+      }
       if (config.oracle.distractorOutputPattern) new RegExp(config.oracle.distractorOutputPattern, 'i');
       for (const key of ['efficientCommandBudget', 'explorationTokenBudget']) {
         const value = config.oracle[key];
