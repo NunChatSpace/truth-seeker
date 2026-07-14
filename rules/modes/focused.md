@@ -2,7 +2,7 @@
 
 Use the minimum evidence sufficient for a low-risk decision. Keep classification mostly implicit when it is obvious, but surface every blocking unknown, material assumption, retry reason, approval boundary, and verification result.
 
-Investigation budget: one hypothesis record, then the cheapest probe that could falsify it, one targeted probe per unresolved evidence hop, and one final result record. Before each probe, know which result would refute the current hypothesis. Search scope may be broad when that is the cheapest discriminating test; optimize for fast falsification, not narrowness for its own sake.
+Investigation budget: one scope proposal and approval, one hypothesis record, then the cheapest probe that could falsify it, one targeted probe per unresolved evidence hop, and one final result record. Before each probe, know which result would refute the current hypothesis. Keep probes inside the approved scope and bound expected output. Propose and wait for new approval before expanding; optimize for fast falsification, not narrowness for its own sake.
 
 Treat an evidence hop as one bounded probe. When the falsifier appears, record the hypothesis as refuted before taking another probe and never spend a probe on that dead path again. A replacement hypothesis must be derived from the falsifying observation. After the causal path and required behavioral verification are both established, stop. Do not reread evidence solely to add line numbers, improve formatting, or restate an already supported conclusion.
 

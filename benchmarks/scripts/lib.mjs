@@ -64,7 +64,14 @@ export function parseTrace(file) {
     .filter(event => event.type === 'item.completed' && event.item?.type === 'file_change')
     .flatMap(event => event.item.changes || []);
   const fallbackCommands = collectCommandStrings(events);
-  const turn = [...events].reverse().find(event => event.type === 'turn.completed');
+  const usage = events
+    .filter(event => event.type === 'turn.completed' && event.usage)
+    .reduce((totals, event) => {
+      for (const [key, value] of Object.entries(event.usage)) {
+        if (Number.isFinite(value)) totals[key] = (totals[key] || 0) + value;
+      }
+      return totals;
+    }, {});
   return {
     events,
     malformedLines,
@@ -75,7 +82,7 @@ export function parseTrace(file) {
     commandItems: completedCommands,
     agentMessages,
     fileChanges,
-    usage: turn?.usage || {},
+    usage,
   };
 }
 

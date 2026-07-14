@@ -1,5 +1,6 @@
 {
   "id": "fast-false-complex",
+  "scopeApproval": true,
   "promptFile": "prompt.md",
   "complexity": { "level": 3, "label": "complex", "plausibleCauses": 4, "evidenceHops": 3, "distractors": 150 },
   "generatedDistractors": {

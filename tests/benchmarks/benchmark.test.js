@@ -99,6 +99,72 @@ process.stdin.on('end', () => {
   fs.rmSync(fakeBin, { recursive: true, force: true });
 });
 
+test('focused scope scenarios stop, receive approval, and resume the same session', () => {
+  const fakeBin = fs.mkdtempSync(path.join(os.tmpdir(), 'truth-seeker-fake-resume-'));
+  const fakeCodex = path.join(fakeBin, 'codex');
+  fs.writeFileSync(fakeCodex, `#!/usr/bin/env node
+const fs = require('node:fs');
+const path = require('node:path');
+const args = process.argv.slice(2);
+const value = flag => args[args.indexOf(flag) + 1];
+const resumed = args[0] === 'exec' && args[1] === 'resume';
+let prompt = '';
+process.stdin.on('data', chunk => { prompt += chunk; });
+process.stdin.on('end', () => {
+  const cwd = resumed ? process.cwd() : value('--cd');
+  fs.writeFileSync(path.join(cwd, resumed ? 'resume-capture.json' : 'scope-capture.json'), JSON.stringify({ args, prompt }));
+  if (!resumed) {
+    fs.writeFileSync(value('--output-last-message'), JSON.stringify({
+      status: 'needs_input',
+      summary: 'SCOPE PROPOSAL | Search: app.js, src/, config/ | Exclude: evidence/ | Goal: trace runtime version | Expand only if: source is not found',
+      hypothesis: null, falsification: null,
+      result: { observed: 'No exploration performed', verdict: 'inconclusive', next: 'Wait for scope approval' },
+      deviation: null, facts: [], assumptions: [], unknowns: ['Scope approval'], verification: [],
+    }));
+    process.stdout.write(JSON.stringify({ type: 'thread.started', thread_id: '00000000-0000-0000-0000-000000000001' }) + '\\n');
+    process.stdout.write(JSON.stringify({ type: 'item.completed', item: { type: 'agent_message', text: 'SCOPE PROPOSAL | Search: app.js, src/, config/ | Exclude: evidence/ | Goal: trace runtime version | Expand only if: source is not found' } }) + '\\n');
+    process.stdout.write(JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 10, output_tokens: 5 } }) + '\\n');
+    return;
+  }
+  fs.writeFileSync(value('--output-last-message'), JSON.stringify({
+    status: 'answered', summary: 'fake resumed result', hypothesis: null, falsification: null,
+    result: { observed: 'fake', verdict: 'inconclusive', next: 'none' }, deviation: null,
+    facts: [], assumptions: [], unknowns: [], verification: [],
+  }));
+  process.stdout.write(JSON.stringify({ type: 'thread.started', thread_id: '00000000-0000-0000-0000-000000000001' }) + '\\n');
+  process.stdout.write(JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 20, output_tokens: 7 } }) + '\\n');
+});
+`);
+  fs.chmodSync(fakeCodex, 0o755);
+
+  const result = nodeScript('run.mjs', [
+    '--execute', '--model', 'test-model', '--scenario', 'fast-false-simple',
+    '--arm', 'focused', '--repetitions', '1',
+  ], {
+    TRUTH_SEEKER_BENCHMARK_APPROVED: '1',
+    PATH: `${fakeBin}${path.delimiter}${process.env.PATH}`,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  const resultRoot = result.stdout.trim();
+  const runName = fs.readdirSync(resultRoot).find(name => /^001-/.test(name));
+  const runRoot = path.join(resultRoot, runName);
+  const metadata = JSON.parse(fs.readFileSync(path.join(runRoot, 'metadata.json'), 'utf8'));
+  const scopeCapture = JSON.parse(fs.readFileSync(path.join(runRoot, 'workspace', 'scope-capture.json'), 'utf8'));
+  const resumeCapture = JSON.parse(fs.readFileSync(path.join(runRoot, 'workspace', 'resume-capture.json'), 'utf8'));
+
+  assert.equal(metadata.scopeApprovalRequired, true);
+  assert.equal(metadata.scopeApprovalGranted, true);
+  assert.equal(metadata.scopeThreadId, '00000000-0000-0000-0000-000000000001');
+  assert.equal(scopeCapture.args.includes('--ephemeral'), false);
+  assert.equal(resumeCapture.args[1], 'resume');
+  assert.match(resumeCapture.prompt, /Approved.*proposed scope/);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(runRoot, 'scope-final.json'), 'utf8')).status, 'needs_input');
+  assert.equal((fs.readFileSync(path.join(runRoot, 'trace.jsonl'), 'utf8').match(/turn\.completed/g) || []).length, 2);
+
+  fs.rmSync(resultRoot, { recursive: true, force: true });
+  fs.rmSync(fakeBin, { recursive: true, force: true });
+});
+
 test('complexity analyzer reports paired slopes and high-complexity thresholds', () => {
   const resultRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'truth-seeker-complexity-'));
   const scores = [];
@@ -163,6 +229,8 @@ test('fast-false analyzer reports decision relevance separately from necessary p
         arm,
         outcomePassed: true,
         checks: {
+          scopeApprovalRequired: arm === 'focused',
+          scopeApprovalPassed: true,
           verificationPassed: true,
           falsificationAuditScore: 100,
           commandsToFalsification: arm === 'focused' ? 1 : level + 1,
@@ -186,6 +254,14 @@ test('fast-false analyzer reports decision relevance separately from necessary p
   assert.equal(report.directionalThresholdsPassed, true);
   assert.equal(report.highComplexity.commandsReductionPercent >= 30, true);
   assert.equal(report.highComplexity.tokenProxyReductionPercent >= 30, true);
+
+  for (const score of scores) delete score.checks.scopeApprovalRequired;
+  fs.writeFileSync(path.join(resultRoot, 'score-summary.json'), JSON.stringify({ scores }));
+  const legacyAnalysis = nodeScript('falsification.mjs', [resultRoot]);
+  assert.equal(legacyAnalysis.status, 0, legacyAnalysis.stderr);
+  const legacyReport = JSON.parse(fs.readFileSync(path.join(resultRoot, 'falsification.json'), 'utf8'));
+  assert.equal(legacyReport.rows.find(row => row.arm === 'focused').scopeApproval, null);
+  assert.equal(legacyReport.directionalThresholdsPassed, false);
   fs.rmSync(resultRoot, { recursive: true, force: true });
 });
 
@@ -195,7 +271,19 @@ test('fast-false scorer classifies necessary and repeated objectives as offline 
   fs.mkdirSync(path.join(runRoot, 'workspace'), { recursive: true });
   fs.writeFileSync(path.join(runRoot, 'metadata.json'), JSON.stringify({
     scenario: 'fast-false-simple', arm: 'focused', repetition: 1, exitCode: 0,
+    scopeApprovalRequired: true, scopeApprovalGranted: true,
   }));
+  fs.writeFileSync(path.join(runRoot, 'scope-final.json'), JSON.stringify({
+    status: 'needs_input',
+    summary: 'SCOPE PROPOSAL | Search: app.js, config/ | Exclude: evidence/ | Goal: trace runtime version | Expand only if: source is not found',
+    hypothesis: null, falsification: null,
+    result: { observed: 'No exploration performed', verdict: 'inconclusive', next: 'Wait for approval' },
+    deviation: null, facts: [], assumptions: [], unknowns: ['Scope approval'], verification: [],
+  }));
+  fs.writeFileSync(path.join(runRoot, 'scope-trace.jsonl'), [
+    { type: 'item.completed', item: { type: 'agent_message', text: 'SCOPE PROPOSAL | Search: app.js, config/ | Exclude: evidence/ | Goal: trace runtime version | Expand only if: source is not found' } },
+    { type: 'turn.completed', usage: { input_tokens: 10, output_tokens: 5 } },
+  ].map(event => JSON.stringify(event)).join('\n') + '\n');
   fs.writeFileSync(path.join(runRoot, 'final.json'), JSON.stringify({
     status: 'answered', summary: 'The supplied runtime-cache hypothesis is false.',
     hypothesis: {
@@ -212,6 +300,7 @@ test('fast-false scorer classifies necessary and repeated objectives as offline 
     verification: [{ check: 'node app.js', result: '2.3.0' }],
   }));
   fs.writeFileSync(path.join(runRoot, 'trace.jsonl'), [
+    { type: 'turn.completed', usage: { input_tokens: 10, output_tokens: 5 } },
     { type: 'item.completed', item: { type: 'command_execution', command: 'sed -n 1,80p app.js', aggregated_output: '' } },
     { type: 'item.completed', item: { type: 'command_execution', command: 'sed -n 1,80p config/version.txt config/cache.json', aggregated_output: '2.3.0\n{}' } },
     { type: 'item.completed', item: { type: 'command_execution', command: 'cat config/cache.json', aggregated_output: '{}' } },
@@ -230,7 +319,22 @@ test('fast-false scorer classifies necessary and repeated objectives as offline 
   assert.equal(score.checks.unjustifiedContinuation[0].reason, 'objective-already-satisfied');
   assert.equal(score.checks.postFalsificationProbeAuditScore, null);
   assert.equal(score.checks.falsificationPassed, true);
+  assert.equal(score.checks.scopeApprovalPassed, true);
+  assert.equal(score.checks.scopeApprovalScore, 100);
+  assert.equal(score.trace.turnCount, 2);
+  assert.deepEqual(score.trace.usage, { input_tokens: 110, output_tokens: 25 });
   assert.equal(score.policyPassed, true);
+
+  fs.writeFileSync(path.join(runRoot, 'scope-trace.jsonl'), JSON.stringify({
+    type: 'item.completed',
+    item: { type: 'command_execution', command: 'rg -n version .', aggregated_output: 'noise' },
+  }) + '\n');
+  const rescored = nodeScript('score.mjs', [resultRoot]);
+  assert.equal(rescored.status, 0, rescored.stderr);
+  const violated = JSON.parse(rescored.stdout).scores[0];
+  assert.equal(violated.checks.scopeApproval.noExplorationBeforeApproval, false);
+  assert.equal(violated.checks.scopeApprovalPassed, false);
+  assert.equal(violated.policyPassed, false);
   fs.rmSync(resultRoot, { recursive: true, force: true });
 });
 

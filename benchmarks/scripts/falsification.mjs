@@ -10,11 +10,12 @@ function markdown(report) {
   const lines = [
     '# Fast Falsification Calibration', '',
     `Runs: ${report.runCount}. Repetitions per cell: ${report.repetitionsPerCell}.`, '',
-    '| Level | Arm | Correct | Verified | Falsification audit | Commands to false | Output proxy to false | Necessary post-false | Unjustified continuation | Retry without evidence | Total tokens |',
-    '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+    '| Level | Arm | Scope approval | Correct | Verified | Falsification audit | Commands to false | Output proxy to false | Necessary post-false | Unjustified continuation | Retry without evidence | Total tokens |',
+    '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
   ];
   for (const row of report.rows) {
-    lines.push(`| ${row.level} (${row.label}) | ${row.arm} | ${row.correctness.toFixed(0)}% | ${row.verification.toFixed(0)}% | ${row.falsificationAudit.toFixed(1)} | ${row.commandsToFalsification.toFixed(1)} | ${row.falsificationTokenEstimate.toFixed(1)} | ${row.justifiedPostFalsification.toFixed(1)} | ${row.unjustifiedContinuation.toFixed(1)} | ${row.retryWithoutEvidence.toFixed(1)} | ${row.totalTokens.toFixed(1)} |`);
+    const scope = row.scopeApproval === null ? '-' : `${row.scopeApproval.toFixed(0)}%`;
+    lines.push(`| ${row.level} (${row.label}) | ${row.arm} | ${scope} | ${row.correctness.toFixed(0)}% | ${row.verification.toFixed(0)}% | ${row.falsificationAudit.toFixed(1)} | ${row.commandsToFalsification.toFixed(1)} | ${row.falsificationTokenEstimate.toFixed(1)} | ${row.justifiedPostFalsification.toFixed(1)} | ${row.unjustifiedContinuation.toFixed(1)} | ${row.retryWithoutEvidence.toFixed(1)} | ${row.totalTokens.toFixed(1)} |`);
   }
   lines.push('', '## High-complexity paired result', '',
     `- Commands-to-falsification reduction: ${report.highComplexity.commandsReductionPercent.toFixed(1)}%`,
@@ -51,6 +52,9 @@ try {
         label: cell[0].complexity.label,
         arm,
         samples: cell.length,
+        scopeApproval: cell.some(score => score.checks.scopeApprovalRequired)
+          ? 100 * cell.filter(score => score.checks.scopeApprovalPassed).length / cell.length
+          : null,
         correctness: 100 * cell.filter(score => score.outcomePassed).length / cell.length,
         verification: 100 * cell.filter(score => score.checks.verificationPassed).length / cell.length,
         falsificationAudit: mean(cell.map(score => score.checks.falsificationAuditScore || 0)),
@@ -78,7 +82,7 @@ try {
     focusedFalsificationAudit: focused.falsificationAudit,
   };
   const focusedGates = rows.filter(row => row.arm === 'focused')
-    .every(row => row.correctness === 100 && row.verification === 100 &&
+    .every(row => row.scopeApproval === 100 && row.correctness === 100 && row.verification === 100 &&
       row.falsificationAudit === 100);
   const report = {
     runDirectory: resultRoot,

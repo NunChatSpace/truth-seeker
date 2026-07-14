@@ -131,6 +131,19 @@ function isoDirectoryName() {
   return new Date().toISOString().replace(/[:.]/g, '-');
 }
 
+function threadIdFromTrace(stdout) {
+  for (const line of String(stdout || '').split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    try {
+      const event = JSON.parse(line);
+      if (event.type === 'thread.started' && event.thread_id) return event.thread_id;
+    } catch (_error) {
+      // The scorer records malformed trace lines; session discovery only needs valid JSONL events.
+    }
+  }
+  return null;
+}
+
 function executePlan(manifest, plan, options) {
   if (process.env.TRUTH_SEEKER_BENCHMARK_APPROVED !== '1') {
     throw new Error('Execution requires TRUTH_SEEKER_BENCHMARK_APPROVED=1');
@@ -158,11 +171,17 @@ function executePlan(manifest, plan, options) {
     const armConfig = manifest.arms[item.arm];
     const prompt = basePrompt;
     const finalFile = path.join(runRoot, 'final.json');
+    const scopeApprovalRequired = item.arm === 'focused' && config.scopeApproval === true;
+    const firstFinalFile = scopeApprovalRequired
+      ? path.join(runRoot, 'scope-final.json')
+      : finalFile;
     const args = [
-      'exec', '--json', '--ephemeral', '--ignore-user-config', '--ignore-rules',
+      'exec', '--json',
+      ...(scopeApprovalRequired ? [] : ['--ephemeral']),
+      '--ignore-user-config', '--ignore-rules',
       '--dangerously-bypass-hook-trust',
       '--sandbox', 'workspace-write', '--skip-git-repo-check',
-      '--output-schema', schema, '--output-last-message', finalFile,
+      '--output-schema', schema, '--output-last-message', firstFinalFile,
       '--model', model, '--config', `model_reasoning_effort=${JSON.stringify(reasoning)}`,
       ...lifecycleArgs(armConfig, pluginData),
       '--cd', workspace, '-',
@@ -175,10 +194,42 @@ function executePlan(manifest, plan, options) {
       input: prompt,
       maxBuffer: 64 * 1024 * 1024,
     });
+    let finalResult = result;
+    let traceOutput = result.stdout || '';
+    let stderrOutput = result.stderr || '';
+    let scopeThreadId = null;
+    let approvalPrompt = null;
+
+    if (scopeApprovalRequired) {
+      fs.writeFileSync(path.join(runRoot, 'scope-trace.jsonl'), result.stdout || '');
+      fs.writeFileSync(path.join(runRoot, 'scope-stderr.log'), result.stderr || '');
+      scopeThreadId = threadIdFromTrace(result.stdout);
+      approvalPrompt = config.scopeApprovalPrompt ||
+        'Approved. Proceed exactly within the proposed scope. Ask again before expanding it.';
+
+      if (result.status === 0 && scopeThreadId) {
+        const resumeArgs = [
+          'exec', 'resume', '--json', '--ignore-user-config', '--ignore-rules',
+          '--dangerously-bypass-hook-trust', '--skip-git-repo-check',
+          '--output-schema', schema, '--output-last-message', finalFile,
+          '--model', model, '--config', `model_reasoning_effort=${JSON.stringify(reasoning)}`,
+          ...lifecycleArgs(armConfig, pluginData),
+          scopeThreadId, '-',
+        ];
+        finalResult = spawnSync('codex', resumeArgs, {
+          cwd: workspace,
+          encoding: 'utf8',
+          input: approvalPrompt,
+          maxBuffer: 64 * 1024 * 1024,
+        });
+        traceOutput += finalResult.stdout || '';
+        stderrOutput += finalResult.stderr || '';
+      }
+    }
     const durationMs = Number(process.hrtime.bigint() - started) / 1e6;
 
-    fs.writeFileSync(path.join(runRoot, 'trace.jsonl'), result.stdout || '');
-    fs.writeFileSync(path.join(runRoot, 'stderr.log'), result.stderr || '');
+    fs.writeFileSync(path.join(runRoot, 'trace.jsonl'), traceOutput);
+    fs.writeFileSync(path.join(runRoot, 'stderr.log'), stderrOutput);
     fs.cpSync(workspace, path.join(runRoot, 'workspace'), { recursive: true });
     fs.writeFileSync(path.join(runRoot, 'metadata.json'), JSON.stringify({
       ...item,
@@ -186,10 +237,17 @@ function executePlan(manifest, plan, options) {
       reasoningEffort: reasoning,
       startedAt: startedAt.toISOString(),
       durationMs,
-      exitCode: result.status,
-      signal: result.signal,
+      exitCode: finalResult.status,
+      signal: finalResult.signal,
       injection: armConfig.injection,
       promptSha256: createHash('sha256').update(prompt).digest('hex'),
+      scopeApprovalRequired,
+      scopeApprovalGranted: scopeApprovalRequired && Boolean(scopeThreadId) && result.status === 0,
+      scopeProposalExitCode: scopeApprovalRequired ? result.status : null,
+      scopeThreadId,
+      approvalPromptSha256: approvalPrompt
+        ? createHash('sha256').update(approvalPrompt).digest('hex')
+        : null,
     }, null, 2) + '\n');
     fs.rmSync(tempRoot, { recursive: true, force: true });
   }
