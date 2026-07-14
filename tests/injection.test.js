@@ -17,6 +17,17 @@ function run(event, input = '', env = {}) {
   });
 }
 
+test('Codex manifest wires lifecycle hooks to the root hook config', () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(root, '.codex-plugin', 'plugin.json'), 'utf8'));
+  assert.equal(manifest.hooks, './hooks.json');
+
+  const hooksPath = path.resolve(root, manifest.hooks);
+  assert.equal(path.dirname(hooksPath), root);
+  const config = JSON.parse(fs.readFileSync(hooksPath, 'utf8'));
+  assert.ok(config.hooks.SessionStart);
+  assert.ok(config.hooks.UserPromptSubmit);
+});
+
 test('session start emits the complete focused ruleset', () => {
   const result = run('SessionStart', '', { CLAUDE_CONFIG_DIR: root });
   assert.equal(result.status, 0);

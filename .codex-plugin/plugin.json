@@ -1,6 +1,6 @@
 {
   "name": "truth-seeker",
-  "version": "0.1.0",
+  "version": "0.1.0+codex.20260714090901",
   "description": "Always-on evidence discipline for analysis, root-cause investigation, and implementation.",
   "author": {
     "name": "NunChatSpace",
@@ -16,6 +16,7 @@
     "agent-discipline"
   ],
   "skills": "./skills/",
+  "hooks": "./hooks.json",
   "interface": {
     "displayName": "Truth Seeker",
     "shortDescription": "Evidence-first agent discipline",
