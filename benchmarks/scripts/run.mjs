@@ -16,7 +16,7 @@ function usage() {
   return `Usage: node benchmarks/scripts/run.mjs [options]
 
 Options:
-  --arm baseline|focused|all   Arm selection (default: all)
+  --arm NAME|all               Arm selection (default: all)
   --scenario ID|all           Scenario selection (default: all)
   --repetitions N             Override manifest repetitions
   --seed N                    Override manifest shuffle seed
@@ -74,19 +74,24 @@ function shuffled(items, seed) {
 }
 
 function buildPlan(manifest, options) {
-  const armNames = options.arm === 'all' ? Object.keys(manifest.arms) : [options.arm];
   const scenarios = options.scenario === 'all'
     ? manifest.scenarios.filter(item => item.default !== false)
     : manifest.scenarios.filter(item => item.id === options.scenario);
   const repetitions = options.repetitions ?? manifest.defaultRepetitions;
 
-  if (armNames.some(name => !manifest.arms[name])) throw new Error(`Unknown arm: ${options.arm}`);
+  if (options.arm !== 'all' && !manifest.arms[options.arm]) throw new Error(`Unknown arm: ${options.arm}`);
   if (scenarios.length === 0) throw new Error(`Unknown scenario: ${options.scenario}`);
   if (!Number.isInteger(repetitions) || repetitions < 1) throw new Error('Repetitions must be a positive integer');
 
   const runs = [];
   for (let repetition = 1; repetition <= repetitions; repetition += 1) {
     for (const scenario of scenarios) {
+      const armNames = options.arm === 'all'
+        ? (scenario.arms || manifest.defaultArms || Object.keys(manifest.arms))
+        : [options.arm];
+      if (scenario.arms && armNames.some(name => !scenario.arms.includes(name))) {
+        throw new Error(`Arm ${options.arm} is not enabled for scenario ${scenario.id}`);
+      }
       for (const arm of armNames) runs.push({ scenario: scenario.id, arm, repetition });
     }
   }
@@ -144,6 +149,16 @@ function threadIdFromTrace(stdout) {
   return null;
 }
 
+function estimatedModelTurns(manifest, plan) {
+  return plan.reduce((total, item) => {
+    const entry = manifest.scenarios.find(scenario => scenario.id === item.scenario);
+    const { config } = loadScenario(entry);
+    const hasDialogue = Boolean(config.scopeDialogue?.[item.arm]);
+    const hasProposal = item.arm === 'focused' && config.scopeApproval === true;
+    return total + (hasDialogue || hasProposal ? 2 : 1);
+  }, 0);
+}
+
 function executePlan(manifest, plan, options) {
   if (process.env.TRUTH_SEEKER_BENCHMARK_APPROVED !== '1') {
     throw new Error('Execution requires TRUTH_SEEKER_BENCHMARK_APPROVED=1');
@@ -156,6 +171,7 @@ function executePlan(manifest, plan, options) {
   const resultRoot = path.join(benchmarkRoot, 'results', `run-${isoDirectoryName()}`);
   fs.mkdirSync(resultRoot, { recursive: true });
   const schema = path.join(benchmarkRoot, 'schemas', 'result.schema.json');
+  const questionSchema = path.join(benchmarkRoot, 'schemas', 'scope-question.schema.json');
 
   for (let index = 0; index < plan.length; index += 1) {
     const item = plan[index];
@@ -171,7 +187,10 @@ function executePlan(manifest, plan, options) {
     const armConfig = manifest.arms[item.arm];
     const prompt = basePrompt;
     const finalFile = path.join(runRoot, 'final.json');
-    const scopeApprovalRequired = item.arm === 'focused' && config.scopeApproval === true;
+    const scopeDialogue = config.scopeDialogue?.[item.arm] || null;
+    const scopeApprovalRequired = (item.arm === 'focused' && config.scopeApproval === true) ||
+      Boolean(scopeDialogue);
+    const scopeInteraction = scopeDialogue ? 'question' : scopeApprovalRequired ? 'proposal' : null;
     const firstFinalFile = scopeApprovalRequired
       ? path.join(runRoot, 'scope-final.json')
       : finalFile;
@@ -181,7 +200,8 @@ function executePlan(manifest, plan, options) {
       '--ignore-user-config', '--ignore-rules',
       '--dangerously-bypass-hook-trust',
       '--sandbox', 'workspace-write', '--skip-git-repo-check',
-      '--output-schema', schema, '--output-last-message', firstFinalFile,
+      '--output-schema', scopeDialogue ? questionSchema : schema,
+      '--output-last-message', firstFinalFile,
       '--model', model, '--config', `model_reasoning_effort=${JSON.stringify(reasoning)}`,
       ...lifecycleArgs(armConfig, pluginData),
       '--cd', workspace, '-',
@@ -204,7 +224,7 @@ function executePlan(manifest, plan, options) {
       fs.writeFileSync(path.join(runRoot, 'scope-trace.jsonl'), result.stdout || '');
       fs.writeFileSync(path.join(runRoot, 'scope-stderr.log'), result.stderr || '');
       scopeThreadId = threadIdFromTrace(result.stdout);
-      approvalPrompt = config.scopeApprovalPrompt ||
+      approvalPrompt = scopeDialogue?.userAnswer || config.scopeApprovalPrompt ||
         'Approved. Proceed exactly within the proposed scope. Ask again before expanding it.';
 
       if (result.status === 0 && scopeThreadId) {
@@ -242,6 +262,8 @@ function executePlan(manifest, plan, options) {
       injection: armConfig.injection,
       promptSha256: createHash('sha256').update(prompt).digest('hex'),
       scopeApprovalRequired,
+      scopeInteraction,
+      scopeAnswerKind: scopeDialogue?.answerKind || null,
       scopeApprovalGranted: scopeApprovalRequired && Boolean(scopeThreadId) && result.status === 0,
       scopeProposalExitCode: scopeApprovalRequired ? result.status : null,
       scopeThreadId,
@@ -255,6 +277,7 @@ function executePlan(manifest, plan, options) {
   fs.writeFileSync(path.join(resultRoot, 'plan.json'), JSON.stringify({
     model,
     reasoningEffort: reasoning,
+    modelTurns: estimatedModelTurns(manifest, plan),
     runs: plan,
   }, null, 2) + '\n');
   process.stdout.write(`${resultRoot}\n`);
@@ -273,6 +296,7 @@ try {
       execute: false,
       seed: options.seed ?? manifest.seed,
       runCount: plan.length,
+      estimatedModelTurns: estimatedModelTurns(manifest, plan),
       model: options.model || manifest.defaultModel,
       reasoningEffort: options.reasoning || manifest.defaultReasoningEffort,
       runs: plan,

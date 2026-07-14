@@ -1,0 +1,46 @@
+{
+  "id": "scope-information-gain-complex",
+  "promptFile": "prompt.md",
+  "complexity": { "level": 3, "label": "complex", "plausibleCauses": 3, "evidenceHops": 3, "distractors": 300 },
+  "scopeDialogue": {
+    "approval-control": {
+      "answerKind": "generic",
+      "userAnswer": "Approved. Investigate the scope you proposed and ask again before materially expanding it."
+    },
+    "informed-scope": {
+      "answerKind": "informed",
+      "userAnswer": "The value was observed in the runtime API response. Investigate runtime/ first. Exclude deployment/ and history/ unless runtime evidence is inconclusive."
+    }
+  },
+  "generatedDistractors": {
+    "directory": "history",
+    "count": 300,
+    "filenamePrefix": "rollout-version-",
+    "contentTemplate": "Archived rollout {index}: versions 2.3.0 and 2.4.0 appeared in deployment cache analysis. This record is not read by the runtime API.\n"
+  },
+  "oracle": {
+    "expectedStatuses": ["answered", "completed"],
+    "mustAsk": false,
+    "mustVerify": true,
+    "mustFalsify": true,
+    "requiredAnswerPatterns": ["runtime/config/version\\.txt", "2\\.3\\.0", "2\\.4\\.0"],
+    "forbiddenCommandPatterns": [],
+    "verificationCommandPatterns": ["node\\s+runtime/app\\.js"],
+    "verificationEvidencePatterns": ["2\\.3\\.0"],
+    "distractorOutputPattern": "history/rollout-version-",
+    "distractorPathPattern": "history/rollout-version-[0-9]+\\.txt",
+    "broadSearchCommandPatterns": ["\\brg\\b[^\\n]*(?:\\s|[\"'])(?:\\.|\\./)(?:\\s|[\"']|$)", "\\bfind\\s+(?:\\.|\\./)(?:\\s|$)"],
+    "distractorFailureAt": 300,
+    "falsifierOutputPatterns": ["readFileSync\\(['\"]runtime/config/version\\.txt"],
+    "falsifierCommandPatterns": ["\\bsed\\b[^\\n]*runtime/app\\.js", "\\bsed\\b[^\\n]*runtime/version-source\\.js"],
+    "deadHypothesisCommandPatterns": ["deployment/release\\.json", "history/"],
+    "postFalsificationObjectives": [
+      { "id": "replacement-evidence", "type": "replace", "commandPatterns": ["runtime/config/version\\.txt"], "maxUses": 1 },
+      { "id": "behavioral-verification", "type": "verify", "commandPatterns": ["node\\s+runtime/app\\.js"], "maxUses": 1 }
+    ],
+    "evidenceOutputPatterns": ["runtime/config/version\\.txt", "2\\.3\\.0", "2\\.4\\.0"],
+    "efficientCommandBudget": 5,
+    "explorationTokenBudget": 1000,
+    "postChecks": []
+  }
+}

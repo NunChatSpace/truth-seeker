@@ -62,7 +62,7 @@ Behavioral evaluation lives in [`benchmarks/`](benchmarks/README.md). The benchm
 
 Reports keep correctness and safety as hard gates, then compare baseline and Truth Seeker across drowning resistance, exploration efficiency, hypothesis discipline, and deviation escalation.
 
-Benchmark v11 calibrates conditional scope control on `gpt-5.4-mini` with medium reasoning. Bounded fast-false scenarios remain single-turn; scenarios that genuinely require scope approval use a real resumed session. Reports include every turn so approval overhead is not hidden.
+Benchmark v12 adds an opt-in information-gain suite on `gpt-5.4-mini`. It compares baseline search, generic approval, and an informed user scope answer while reporting raw, cached, and uncached-equivalent tokens across every turn. The default paid plan remains unchanged.
 
 ## Credits
 

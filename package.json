@@ -9,7 +9,8 @@
     "benchmark:validate": "node benchmarks/scripts/validate.mjs",
     "benchmark:plan": "node benchmarks/scripts/run.mjs",
     "benchmark:complexity": "node benchmarks/scripts/complexity.mjs",
-    "benchmark:falsification": "node benchmarks/scripts/falsification.mjs"
+    "benchmark:falsification": "node benchmarks/scripts/falsification.mjs",
+    "benchmark:scope-gain": "node benchmarks/scripts/scope-gain.mjs"
   },
   "engines": {
     "node": ">=18"

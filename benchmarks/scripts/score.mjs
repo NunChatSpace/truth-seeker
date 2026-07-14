@@ -234,6 +234,17 @@ function scopeApprovalDiscipline(runRoot, metadata) {
     JSON.stringify(scopeFinal || {}),
     ...scopeTrace.agentMessages.map(message => message.text),
   ].join('\n');
+  if (metadata.scopeInteraction === 'question') {
+    const checks = {
+      questionAsked: typeof scopeFinal?.question === 'string' && scopeFinal.question.trim().length > 0,
+      optionsProvided: Array.isArray(scopeFinal?.options) && scopeFinal.options.length >= 2,
+      stoppedForApproval: scopeFinal?.status === 'needs_input',
+      noExplorationBeforeApproval: scopeTrace.commands.length === 0 && scopeTrace.fileChanges.length === 0,
+      approvalTurnRan: metadata.scopeApprovalGranted === true,
+    };
+    const score = 100 * Object.values(checks).filter(Boolean).length / Object.keys(checks).length;
+    return { required: true, checks, score, passed: score === 100 };
+  }
   const checks = {
     proposed: /SCOPE PROPOSAL/i.test(proposalText),
     search: /Search\s*:/i.test(proposalText),
@@ -464,6 +475,7 @@ function scoreRun(runRoot, manifest) {
       commands: trace.commands,
       fileChanges: trace.fileChanges,
       usage: trace.usage,
+      durationMs: metadata.durationMs,
       explorationOutputChars,
       explorationTokenEstimate,
       preEvidenceOutputChars,

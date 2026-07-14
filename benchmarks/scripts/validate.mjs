@@ -30,6 +30,9 @@ if (manifest) {
   for (const entry of manifest.scenarios || []) {
     if (ids.has(entry.id)) errors.push(`duplicate scenario id: ${entry.id}`);
     ids.add(entry.id);
+    for (const arm of entry.arms || []) {
+      if (!manifest.arms[arm]) errors.push(`${entry.id}: unknown scenario arm ${arm}`);
+    }
     try {
       const { fixtureRoot, config } = loadScenario(entry);
       if (config.id !== entry.id) errors.push(`${entry.id}: scenario id mismatch`);
@@ -78,6 +81,15 @@ if (manifest) {
         if (typeof config.generatedDistractors.contentTemplate !== 'undefined' &&
             typeof config.generatedDistractors.contentTemplate !== 'string') {
           errors.push(`${entry.id}: distractor contentTemplate must be a string`);
+        }
+      }
+      for (const [arm, dialogue] of Object.entries(config.scopeDialogue || {})) {
+        if (!manifest.arms[arm]) errors.push(`${entry.id}: scope dialogue has unknown arm ${arm}`);
+        if (typeof dialogue.userAnswer !== 'string' || !dialogue.userAnswer.trim()) {
+          errors.push(`${entry.id}: scope dialogue ${arm} requires userAnswer`);
+        }
+        if (!['generic', 'informed'].includes(dialogue.answerKind)) {
+          errors.push(`${entry.id}: scope dialogue ${arm} requires generic or informed answerKind`);
         }
       }
       for (const key of ['efficientCommandBudget', 'explorationTokenBudget']) {

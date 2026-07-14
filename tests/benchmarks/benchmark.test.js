@@ -18,7 +18,7 @@ function nodeScript(script, args = [], env = {}) {
 test('benchmark fixtures validate', () => {
   const result = nodeScript('validate.mjs');
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /12 scenarios, 2 arms/);
+  assert.match(result.stdout, /13 scenarios, 4 arms/);
 });
 
 test('default pilot plan is deterministic and does not execute', () => {
@@ -30,6 +30,7 @@ test('default pilot plan is deterministic and does not execute', () => {
   const plan = JSON.parse(first.stdout);
   assert.equal(plan.execute, false);
   assert.equal(plan.runCount, 110);
+  assert.equal(plan.estimatedModelTurns, 110);
   assert.equal(plan.model, 'gpt-5.4-mini');
   assert.equal(plan.reasoningEffort, 'medium');
 });
@@ -41,6 +42,18 @@ test('execution is blocked without explicit approval', () => {
   ], { TRUTH_SEEKER_BENCHMARK_APPROVED: '' });
   assert.equal(result.status, 1);
   assert.match(result.stderr, /requires TRUTH_SEEKER_BENCHMARK_APPROVED=1/);
+});
+
+test('scope information-gain plan selects only its three configured arms', () => {
+  const result = nodeScript('run.mjs', [
+    '--scenario', 'scope-information-gain-complex', '--arm', 'all', '--repetitions', '1',
+  ]);
+  assert.equal(result.status, 0, result.stderr);
+  const plan = JSON.parse(result.stdout);
+  assert.equal(plan.runCount, 3);
+  assert.equal(plan.estimatedModelTurns, 5);
+  assert.deepEqual(new Set(plan.runs.map(run => run.arm)),
+    new Set(['baseline', 'approval-control', 'informed-scope']));
 });
 
 test('focused execution uses lifecycle context without changing the user prompt', () => {
@@ -99,7 +112,7 @@ process.stdin.on('end', () => {
   fs.rmSync(fakeBin, { recursive: true, force: true });
 });
 
-test('focused scope scenarios stop, receive approval, and resume the same session', () => {
+test('scope dialogue uses the question schema and resumes with informed scope', () => {
   const fakeBin = fs.mkdtempSync(path.join(os.tmpdir(), 'truth-seeker-fake-resume-'));
   const fakeCodex = path.join(fakeBin, 'codex');
   fs.writeFileSync(fakeCodex, `#!/usr/bin/env node
@@ -116,13 +129,10 @@ process.stdin.on('end', () => {
   if (!resumed) {
     fs.writeFileSync(value('--output-last-message'), JSON.stringify({
       status: 'needs_input',
-      summary: 'SCOPE PROPOSAL | Search: app.js, src/, config/ | Exclude: evidence/ | Goal: trace runtime version | Expand only if: source is not found',
-      hypothesis: null, falsification: null,
-      result: { observed: 'No exploration performed', verdict: 'inconclusive', next: 'Wait for scope approval' },
-      deviation: null, facts: [], assumptions: [], unknowns: ['Scope approval'], verification: [],
+      question: 'Which surface produced the value?',
+      options: ['runtime API', 'deployment artifact', 'unknown'],
     }));
     process.stdout.write(JSON.stringify({ type: 'thread.started', thread_id: '00000000-0000-0000-0000-000000000001' }) + '\\n');
-    process.stdout.write(JSON.stringify({ type: 'item.completed', item: { type: 'agent_message', text: 'SCOPE PROPOSAL | Search: app.js, src/, config/ | Exclude: evidence/ | Goal: trace runtime version | Expand only if: source is not found' } }) + '\\n');
     process.stdout.write(JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 10, output_tokens: 5 } }) + '\\n');
     return;
   }
@@ -134,12 +144,13 @@ process.stdin.on('end', () => {
   process.stdout.write(JSON.stringify({ type: 'thread.started', thread_id: '00000000-0000-0000-0000-000000000001' }) + '\\n');
   process.stdout.write(JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 20, output_tokens: 7 } }) + '\\n');
 });
+
 `);
   fs.chmodSync(fakeCodex, 0o755);
 
   const result = nodeScript('run.mjs', [
-    '--execute', '--model', 'test-model', '--scenario', 'scope-ambiguous',
-    '--arm', 'focused', '--repetitions', '1',
+    '--execute', '--model', 'test-model', '--scenario', 'scope-information-gain-complex',
+    '--arm', 'informed-scope', '--repetitions', '1',
   ], {
     TRUTH_SEEKER_BENCHMARK_APPROVED: '1',
     PATH: `${fakeBin}${path.delimiter}${process.env.PATH}`,
@@ -154,10 +165,13 @@ process.stdin.on('end', () => {
 
   assert.equal(metadata.scopeApprovalRequired, true);
   assert.equal(metadata.scopeApprovalGranted, true);
+  assert.equal(metadata.scopeInteraction, 'question');
+  assert.equal(metadata.scopeAnswerKind, 'informed');
   assert.equal(metadata.scopeThreadId, '00000000-0000-0000-0000-000000000001');
   assert.equal(scopeCapture.args.includes('--ephemeral'), false);
+  assert.match(scopeCapture.args[scopeCapture.args.indexOf('--output-schema') + 1], /scope-question\.schema\.json$/);
   assert.equal(resumeCapture.args[1], 'resume');
-  assert.match(resumeCapture.prompt, /Approved.*proposed scope/);
+  assert.match(resumeCapture.prompt, /runtime API response.*runtime\//);
   assert.equal(JSON.parse(fs.readFileSync(path.join(runRoot, 'scope-final.json'), 'utf8')).status, 'needs_input');
   assert.equal((fs.readFileSync(path.join(runRoot, 'trace.jsonl'), 'utf8').match(/turn\.completed/g) || []).length, 2);
 
@@ -262,6 +276,37 @@ test('fast-false analyzer reports decision relevance separately from necessary p
   const legacyReport = JSON.parse(fs.readFileSync(path.join(resultRoot, 'falsification.json'), 'utf8'));
   assert.equal(legacyReport.rows.find(row => row.arm === 'focused').scopeApproval, null);
   assert.equal(legacyReport.directionalThresholdsPassed, true);
+  fs.rmSync(resultRoot, { recursive: true, force: true });
+});
+
+test('scope information-gain analyzer separates raw and cached token accounting', () => {
+  const resultRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'truth-seeker-scope-gain-'));
+  const values = {
+    baseline: { input: 1000, cached: 200, output: 200, commands: 10, proxy: 1000, question: true },
+    'approval-control': { input: 1500, cached: 900, output: 180, commands: 8, proxy: 800, question: true },
+    'informed-scope': { input: 700, cached: 300, output: 100, commands: 5, proxy: 500, question: true },
+  };
+  const scores = Object.entries(values).map(([arm, value]) => ({
+    scenario: 'scope-information-gain-complex', arm, outcomePassed: true,
+    checks: {
+      scopeApprovalPassed: value.question,
+      verificationPassed: true,
+      falsificationAuditScore: 100,
+      commandsToFalsification: value.commands,
+    },
+    trace: {
+      falsificationTokenEstimate: value.proxy,
+      durationMs: 100,
+      usage: { input_tokens: value.input, cached_input_tokens: value.cached, output_tokens: value.output },
+    },
+  }));
+  fs.writeFileSync(path.join(resultRoot, 'score-summary.json'), JSON.stringify({ scores }));
+  const analysis = nodeScript('scope-gain.mjs', [resultRoot]);
+  assert.equal(analysis.status, 0, analysis.stderr);
+  const report = JSON.parse(fs.readFileSync(path.join(resultRoot, 'scope-gain.json'), 'utf8'));
+  assert.equal(report.directionalThresholdsPassed, true);
+  assert.equal(report.rows.find(row => row.arm === 'informed-scope').rawTotalTokens, 800);
+  assert.equal(report.rows.find(row => row.arm === 'informed-scope').uncachedEquivalentTokens, 500);
   fs.rmSync(resultRoot, { recursive: true, force: true });
 });
 
