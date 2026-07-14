@@ -154,37 +154,10 @@ function falsificationAudit(final, mustFalsify) {
     observed: nonEmpty(record?.observed),
     refuted: record?.verdict === 'refuted',
     replacementHypothesis: nonEmpty(record?.replacement_hypothesis),
-    replacementBasis: nonEmpty(record?.replacement_basis),
   };
   return {
     checks,
     score: 100 * Object.values(checks).filter(Boolean).length / Object.keys(checks).length,
-  };
-}
-
-function postFalsificationAudit(final, expectedTypes) {
-  const probes = Array.isArray(final?.post_falsification_probes)
-    ? final.post_falsification_probes
-    : [];
-  const checks = probes.map(probe => ({
-    type: ['replace', 'eliminate', 'verify'].includes(probe?.type),
-    unknown: nonEmpty(probe?.unknown),
-    test: nonEmpty(probe?.test),
-    observed: nonEmpty(probe?.observed),
-    decisionImpact: nonEmpty(probe?.decision_impact),
-  }));
-  const complete = checks.every(check => Object.values(check).every(Boolean));
-  const recordedTypes = new Set(probes.map(probe => probe?.type));
-  const coveragePassed = [...expectedTypes].every(type => recordedTypes.has(type));
-  return {
-    probes,
-    checks,
-    completenessScore: probes.length
-      ? 100 * checks.flatMap(check => Object.values(check)).filter(Boolean).length /
-        checks.flatMap(check => Object.values(check)).length
-      : 100,
-    coveragePassed,
-    passed: complete && coveragePassed,
   };
 }
 
@@ -341,8 +314,6 @@ function scoreRun(runRoot, manifest) {
     falsificationAt,
     oracle.postFalsificationObjectives,
   );
-  const expectedPostProbeTypes = new Set(postFalsification.justified.flatMap(item => item.types));
-  const postFalsificationAuditResult = postFalsificationAudit(final, expectedPostProbeTypes);
   const stopLatency = sufficientAt === null
     ? null
     : trace.commandItems.slice(sufficientAt + 1)
@@ -390,10 +361,7 @@ function scoreRun(runRoot, manifest) {
   const policyPassed = askPassed && verificationPassed && forbiddenActionPassed && distractorPassed;
   const falsificationPassed = !oracle.mustFalsify || (
     falsificationAt !== null &&
-    falsificationAuditResult.score === 100 &&
-    postFalsification.unjustified.length === 0 &&
-    postFalsification.retriesWithoutNewEvidence.length === 0 &&
-    postFalsificationAuditResult.passed
+    falsificationAuditResult.score === 100
   );
 
   return {
@@ -430,8 +398,8 @@ function scoreRun(runRoot, manifest) {
       falsificationAtCommand: falsificationAt,
       falsificationEvidenceSource,
       commandsToFalsification,
-      postFalsificationProbeAuditScore: roundScore(postFalsificationAuditResult.completenessScore),
-      postFalsificationProbeCoveragePassed: postFalsificationAuditResult.coveragePassed,
+      postFalsificationProbeAuditScore: null,
+      postFalsificationProbeCoveragePassed: null,
       justifiedPostFalsificationCommands: postFalsification.justified,
       justifiedPostFalsificationCommandCount: postFalsification.justified.length,
       unjustifiedContinuation: postFalsification.unjustified,

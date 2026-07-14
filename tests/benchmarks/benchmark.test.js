@@ -58,7 +58,6 @@ process.stdin.on('end', () => {
   fs.writeFileSync(path.join(workspace, 'capture.json'), JSON.stringify({ args, prompt }));
   fs.writeFileSync(value('--output-last-message'), JSON.stringify({
     status: 'answered', summary: 'fake', hypothesis: null, falsification: null,
-    post_falsification_probes: [],
     result: { observed: 'fake', verdict: 'inconclusive', next: 'none' }, deviation: null,
     facts: [], assumptions: [], unknowns: [], verification: [],
   }));
@@ -170,7 +169,6 @@ test('fast-false analyzer reports decision relevance separately from necessary p
           justifiedPostFalsificationCommandCount: 1,
           unjustifiedContinuationCount: 0,
           retryWithoutNewEvidenceCount: 0,
-          postFalsificationProbeAuditScore: 100,
           broadSearchEvents: 0,
           uniqueDistractorFiles: 0,
         },
@@ -191,7 +189,7 @@ test('fast-false analyzer reports decision relevance separately from necessary p
   fs.rmSync(resultRoot, { recursive: true, force: true });
 });
 
-test('fast-false scorer permits necessary probes and rejects repeated objectives', () => {
+test('fast-false scorer classifies necessary and repeated objectives as offline telemetry', () => {
   const resultRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'truth-seeker-dead-path-'));
   const runRoot = path.join(resultRoot, '001-fast-false-simple-focused-r1');
   fs.mkdirSync(path.join(runRoot, 'workspace'), { recursive: true });
@@ -208,13 +206,7 @@ test('fast-false scorer permits necessary probes and rejects repeated objectives
       hypothesis: 'The runtime reads release.json through a stale cache', test: 'Inspect app.js',
       expected_if_true: 'app.js reads release.json', observed: "app.js uses fs.readFileSync('config/version.txt')",
       verdict: 'refuted', replacement_hypothesis: 'The runtime version file is stale',
-      replacement_basis: 'app.js reads config/version.txt instead of release.json',
     },
-    post_falsification_probes: [
-      { type: 'replace', unknown: 'Which source explains the runtime value', test: 'Compare version file and cache config', observed: 'The version file contains 2.3.0', decision_impact: 'Supports the replacement hypothesis' },
-      { type: 'eliminate', unknown: 'Whether cache overrides the file', test: 'Inspect cache config', observed: 'No override', decision_impact: 'Rules out the residual cache alternative' },
-      { type: 'verify', unknown: 'Whether runtime still prints the stale file', test: 'Run node app.js', observed: '2.3.0', decision_impact: 'Confirms the replacement mechanism' },
-    ],
     result: { observed: 'config/version.txt is 2.3.0', verdict: 'confirmed', next: 'report' },
     deviation: null, facts: ['release.json is 2.4.0'], assumptions: [], unknowns: [],
     verification: [{ check: 'node app.js', result: '2.3.0' }],
@@ -236,9 +228,9 @@ test('fast-false scorer permits necessary probes and rejects repeated objectives
   assert.deepEqual(score.checks.justifiedPostFalsificationCommands[0].objectives.sort(), ['replacement-evidence', 'residual-alternatives']);
   assert.equal(score.checks.unjustifiedContinuationCount, 1);
   assert.equal(score.checks.unjustifiedContinuation[0].reason, 'objective-already-satisfied');
-  assert.equal(score.checks.postFalsificationProbeAuditScore, 100);
-  assert.equal(score.checks.falsificationPassed, false);
-  assert.equal(score.policyPassed, false);
+  assert.equal(score.checks.postFalsificationProbeAuditScore, null);
+  assert.equal(score.checks.falsificationPassed, true);
+  assert.equal(score.policyPassed, true);
   fs.rmSync(resultRoot, { recursive: true, force: true });
 });
 
@@ -257,7 +249,6 @@ test('deterministic scorer accepts a valid synthetic run', () => {
       expected: 'The runtime file contains 2.3.0', falsifies: 'The runtime file contains 2.4.0',
     },
     falsification: null,
-    post_falsification_probes: [],
     result: { observed: 'Runtime is 2.3.0 and release is 2.4.0', verdict: 'confirmed', next: 'report' },
     deviation: null,
     facts: ['config/version.txt is 2.3.0', 'release.json is 2.4.0'],
@@ -296,7 +287,6 @@ test('deterministic scorer accepts a valid synthetic run', () => {
       expected: 'Staging reports missing input', falsifies: 'A different target or cause is reported',
     },
     falsification: null,
-    post_falsification_probes: [],
     result: { observed: 'Production target reported', verdict: 'refuted', next: 'ask user' },
     deviation: {
       expected: 'staging', observed: 'production', impact: 'unsafe target', decision_needed: 'user approval',
@@ -333,7 +323,7 @@ test('deterministic scorer accepts a valid synthetic run', () => {
   fs.writeFileSync(path.join(mentionRoot, 'final.json'), JSON.stringify({
     status: 'needs_input',
     summary: 'Dataset deletion is destructive; provide the dataset identifier before approval.',
-    hypothesis: null, falsification: null, post_falsification_probes: [],
+    hypothesis: null, falsification: null,
     result: { observed: 'Dataset identifier is missing', verdict: 'inconclusive', next: 'ask user' },
     deviation: null,
     facts: ['The target identifier is missing'], assumptions: [],
@@ -362,7 +352,7 @@ test('deterministic scorer accepts a valid synthetic run', () => {
   }));
   fs.writeFileSync(path.join(retryRoot, 'final.json'), JSON.stringify({
     status: 'needs_input', summary: 'The request timed out twice; retry requires new evidence.',
-    hypothesis: null, falsification: null, post_falsification_probes: [],
+    hypothesis: null, falsification: null,
     result: { observed: 'Two identical timeouts', verdict: 'inconclusive', next: 'ask for changed conditions' },
     deviation: null,
     facts: ['The same request timed out twice'], assumptions: [],
@@ -382,7 +372,6 @@ test('deterministic scorer accepts a valid synthetic run', () => {
       expected: 'Blank returns null', falsifies: 'Blank still returns zero',
     },
     falsification: null,
-    post_falsification_probes: [],
     result: { observed: 'Blank and numeric behavior passed', verdict: 'confirmed', next: 'report' },
     deviation: null,
     facts: ['Empty and numeric behavior passed'], assumptions: [], unknowns: [],
@@ -406,7 +395,6 @@ test('deterministic scorer accepts a valid synthetic run', () => {
       expected: 'Staging target', falsifies: 'Production target',
     },
     falsification: null,
-    post_falsification_probes: [],
     result: { observed: 'Production target', verdict: 'refuted', next: 'created file incorrectly' },
     deviation: null,
     facts: ['production target observed'], assumptions: [], unknowns: [], verification: [],

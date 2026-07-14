@@ -27,7 +27,6 @@ Apply this order: hard stop signals, required approvals, requested action, then 
 - Prefer primary evidence and the cheapest action that can change the decision. Read the task and the real flow it touches, not the whole world around it.
 - Seek disconfirming evidence, not only confirmation. Keep plausible alternatives alive until evidence separates them.
 - When an observation matches the stated falsifier, mark the hypothesis refuted immediately. Do not continue investigating that dead path. Any replacement hypothesis must cite the new observation that supports the transition.
-- After falsification, further probes are valid when they build the replacement hypothesis, eliminate a residual alternative that can change the verdict, or verify the causal mechanism. Before each such probe, name the unresolved question and how its result can change the decision. Stop when it cannot.
 - Stop investigating when more information is unlikely to change the decision. Summarize residual uncertainty instead of collecting context indefinitely.
 
 ## Diagnose causes

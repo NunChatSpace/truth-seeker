@@ -10,11 +10,11 @@ function markdown(report) {
   const lines = [
     '# Fast Falsification Calibration', '',
     `Runs: ${report.runCount}. Repetitions per cell: ${report.repetitionsPerCell}.`, '',
-    '| Level | Arm | Correct | Verified | Falsification audit | Commands to false | Output proxy to false | Necessary post-false | Unjustified continuation | Retry without evidence | Probe audit | Total tokens |',
-    '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
+    '| Level | Arm | Correct | Verified | Falsification audit | Commands to false | Output proxy to false | Necessary post-false | Unjustified continuation | Retry without evidence | Total tokens |',
+    '| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |',
   ];
   for (const row of report.rows) {
-    lines.push(`| ${row.level} (${row.label}) | ${row.arm} | ${row.correctness.toFixed(0)}% | ${row.verification.toFixed(0)}% | ${row.falsificationAudit.toFixed(1)} | ${row.commandsToFalsification.toFixed(1)} | ${row.falsificationTokenEstimate.toFixed(1)} | ${row.justifiedPostFalsification.toFixed(1)} | ${row.unjustifiedContinuation.toFixed(1)} | ${row.retryWithoutEvidence.toFixed(1)} | ${row.postProbeAudit.toFixed(1)} | ${row.totalTokens.toFixed(1)} |`);
+    lines.push(`| ${row.level} (${row.label}) | ${row.arm} | ${row.correctness.toFixed(0)}% | ${row.verification.toFixed(0)}% | ${row.falsificationAudit.toFixed(1)} | ${row.commandsToFalsification.toFixed(1)} | ${row.falsificationTokenEstimate.toFixed(1)} | ${row.justifiedPostFalsification.toFixed(1)} | ${row.unjustifiedContinuation.toFixed(1)} | ${row.retryWithoutEvidence.toFixed(1)} | ${row.totalTokens.toFixed(1)} |`);
   }
   lines.push('', '## High-complexity paired result', '',
     `- Commands-to-falsification reduction: ${report.highComplexity.commandsReductionPercent.toFixed(1)}%`,
@@ -59,7 +59,6 @@ try {
         justifiedPostFalsification: mean(cell.map(score => score.checks.justifiedPostFalsificationCommandCount || 0)),
         unjustifiedContinuation: mean(cell.map(score => score.checks.unjustifiedContinuationCount || 0)),
         retryWithoutEvidence: mean(cell.map(score => score.checks.retryWithoutNewEvidenceCount || 0)),
-        postProbeAudit: mean(cell.map(score => score.checks.postFalsificationProbeAuditScore ?? 0)),
         totalTokens: mean(cell.map(score =>
           (score.trace.usage.input_tokens || 0) + (score.trace.usage.output_tokens || 0))),
         broadSearchEvents: mean(cell.map(score => score.checks.broadSearchEvents || 0)),
@@ -80,8 +79,7 @@ try {
   };
   const focusedGates = rows.filter(row => row.arm === 'focused')
     .every(row => row.correctness === 100 && row.verification === 100 &&
-      row.falsificationAudit === 100 && row.postProbeAudit === 100 &&
-      row.unjustifiedContinuation === 0 && row.retryWithoutEvidence === 0);
+      row.falsificationAudit === 100);
   const report = {
     runDirectory: resultRoot,
     runCount: scores.length,

@@ -43,8 +43,7 @@ test('the injection script emits the complete focused ruleset', () => {
   assert.match(result.stdout, /Focused level/);
   assert.match(result.stdout, /cheapest probe that could falsify it/);
   assert.match(result.stdout, /Search scope may be broad/);
-  assert.match(result.stdout, /build the replacement hypothesis, eliminate a residual alternative/);
-  assert.match(result.stdout, /repeated or unmapped probe without new evidence is unjustified/);
+  assert.match(result.stdout, /never spend a probe on that dead path again/);
   assert.match(result.stdout, /Do not reread evidence solely to add line numbers/);
 });
 
