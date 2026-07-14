@@ -15,6 +15,13 @@
       "node\\s+--test",
       "npm\\s+test"
     ],
+    "evidenceOutputPatterns": [
+      "blank input is absent rather than zero",
+      "numeric input is normalized",
+      "pass"
+    ],
+    "efficientCommandBudget": 3,
+    "explorationTokenBudget": 400,
     "postChecks": [
       {
         "type": "command",

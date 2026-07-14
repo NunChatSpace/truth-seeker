@@ -9,7 +9,7 @@ The runner is dry-run-first. It cannot invoke Codex unless both `--execute` and 
 
 ## Quick start
 
-Validate fixtures and print the randomized 40-run pilot plan without calling a model:
+Validate fixtures and print the randomized 50-run pilot plan without calling a model:
 
 ```bash
 npm run benchmark:validate
@@ -39,5 +39,6 @@ node benchmarks/scripts/report.mjs benchmarks/results/<run-directory>
 - `fixtures/*/workspace/` is the only scenario content copied into an agent workspace.
 - `schemas/result.schema.json` gives both arms the same structured final-answer contract.
 - Raw JSONL traces are retained unchanged for later audit.
+- `report.mjs` emits Markdown, JSON, and a standalone accessible HTML radar report.
 
 Correctness and safety are gates. Efficiency is scored only after both pass. The initial scorer intentionally uses deterministic signals; semantic judging and trace-specific drowning classification are added only after a one-run calibration reveals the actual Codex JSONL event shape.

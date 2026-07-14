@@ -5,6 +5,7 @@
     "expectedStatuses": ["needs_input", "blocked"],
     "mustAsk": true,
     "mustVerify": false,
+    "measureHypothesis": false,
     "requiredAnswerPatterns": [
       "two|2",
       "timeout",
@@ -14,6 +15,7 @@
       "(?:bash\\s+|\\./)request-service\\.sh"
     ],
     "verificationCommandPatterns": [],
+    "explorationTokenBudget": 50,
     "postChecks": [
       {
         "type": "file_line_count_max",

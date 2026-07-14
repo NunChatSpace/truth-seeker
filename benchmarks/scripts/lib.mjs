@@ -53,8 +53,13 @@ export function parseTrace(file) {
     }
   }
   const completedCommands = events
-    .filter(event => event.type === 'item.completed' && event.item?.type === 'command_execution')
-    .map(event => event.item);
+    .map((event, eventIndex) => ({ event, eventIndex }))
+    .filter(({ event }) => event.type === 'item.completed' && event.item?.type === 'command_execution')
+    .map(({ event, eventIndex }) => ({ ...event.item, eventIndex }));
+  const agentMessages = events
+    .map((event, eventIndex) => ({ event, eventIndex }))
+    .filter(({ event }) => event.type === 'item.completed' && event.item?.type === 'agent_message')
+    .map(({ event, eventIndex }) => ({ text: event.item.text || '', eventIndex }));
   const fallbackCommands = collectCommandStrings(events);
   const turn = [...events].reverse().find(event => event.type === 'turn.completed');
   return {
@@ -64,6 +69,8 @@ export function parseTrace(file) {
       ? completedCommands.map(item => item.command)
       : fallbackCommands,
     commandOutputs: completedCommands.map(item => item.aggregated_output || ''),
+    commandItems: completedCommands,
+    agentMessages,
     usage: turn?.usage || {},
   };
 }

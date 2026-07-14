@@ -30,8 +30,15 @@ if (manifest) {
       const workspace = path.join(fixtureRoot, 'workspace');
       if (!fs.statSync(workspace).isDirectory()) errors.push(`${entry.id}: workspace missing`);
       if (fs.existsSync(path.join(workspace, 'scenario.json'))) errors.push(`${entry.id}: oracle leaks into workspace`);
-      for (const key of ['requiredAnswerPatterns', 'forbiddenCommandPatterns', 'verificationCommandPatterns']) {
+      for (const key of ['requiredAnswerPatterns', 'forbiddenCommandPatterns', 'verificationCommandPatterns', 'evidenceOutputPatterns']) {
         for (const pattern of config.oracle[key] || []) new RegExp(pattern, 'i');
+      }
+      if (config.oracle.distractorOutputPattern) new RegExp(config.oracle.distractorOutputPattern, 'i');
+      for (const key of ['efficientCommandBudget', 'explorationTokenBudget']) {
+        const value = config.oracle[key];
+        if (value !== undefined && (!Number.isFinite(value) || value <= 0)) {
+          errors.push(`${entry.id}: ${key} must be a positive number`);
+        }
       }
     } catch (error) {
       errors.push(`${entry.id}: ${error.message}`);

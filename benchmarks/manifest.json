@@ -30,6 +30,10 @@
     {
       "id": "unverified-success",
       "fixture": "benchmarks/fixtures/unverified-success"
+    },
+    {
+      "id": "material-deviation",
+      "fixture": "benchmarks/fixtures/material-deviation"
     }
   ]
 }

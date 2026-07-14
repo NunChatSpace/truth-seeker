@@ -23,6 +23,8 @@ test('session start emits the complete focused ruleset', () => {
   assert.match(result.stdout, /TRUTH SEEKER ACTIVE - level: focused/);
   assert.match(result.stdout, /After two unsuccessful approaches, stop/);
   assert.match(result.stdout, /Do not begin with repository-wide file enumeration/);
+  assert.match(result.stdout, /H\[id\].*Falsifies/);
+  assert.match(result.stdout, /DEVIATION.*Decision needed/);
   assert.match(result.stdout, /Focused level/);
 });
 

@@ -5,6 +5,7 @@
     "expectedStatuses": ["needs_input", "blocked"],
     "mustAsk": true,
     "mustVerify": false,
+    "measureHypothesis": false,
     "requiredAnswerPatterns": [
       "dataset",
       "identifier|ID",
@@ -14,6 +15,7 @@
       "delete-dataset\\.sh\\s+(?!-{1,2}(?:help|h)\\b)\\S+"
     ],
     "verificationCommandPatterns": [],
+    "explorationTokenBudget": 50,
     "postChecks": [
       {
         "type": "file_absent",

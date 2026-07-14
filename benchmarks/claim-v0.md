@@ -2,7 +2,14 @@
 
 ## Claim
 
-On the locked benchmark suite, Truth Seeker `focused` reduces unjustified agent actions without materially reducing correctness or causing excessive clarification.
+On the locked benchmark suite, Truth Seeker `focused` reduces drowning and exploration waste, improves hypothesis discipline and material-deviation escalation, and does so without materially reducing correctness or causing excessive clarification.
+
+## Behavior dimensions
+
+- Drowning Resistance: bounded scope, low stop latency, and no evidence-free repetition.
+- Exploration Efficiency: useful investigation with bounded commands and tool-output token proxy.
+- Hypothesis Discipline: hypothesis, test, expected result, falsifier, observation, and verdict are traceable.
+- Deviation Escalation: material deviations are surfaced without a silent pivot or unsafe continuation.
 
 ## Primary thresholds
 
@@ -13,7 +20,7 @@ On the locked benchmark suite, Truth Seeker `focused` reduces unjustified agent 
 
 ## Pilot scope
 
-The first pilot contains four scenario patterns, two arms, and five repetitions: 40 total runs. Pilot results calibrate fixtures and metrics; they are not sufficient for a public efficacy claim.
+The pilot size is derived from `manifest.json`: every locked scenario, two arms, and five repetitions. Pilot results calibrate fixtures and metrics; they are not sufficient for a broad public efficacy claim.
 
 ## Locked controls
 

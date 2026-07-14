@@ -13,6 +13,7 @@ Seek the truth without drowning in the search. These rules apply to analysis, re
 
 - Every search, read, experiment, or tool call must target a named unknown or discriminate between hypotheses.
 - Do not begin with repository-wide file enumeration, broad search, or speculative browsing. Start from user-named paths, known entry points, and observed errors. Expand scope one bounded step at a time only when evidence identifies a specific unknown that requires it.
+- Before a non-trivial discriminating action, emit one compact record: `H[id]: ... | Test: ... | Expect: ... | Falsifies: ...`. After the result, update only when state changes: `Observed: ... | Verdict: confirmed|refuted|inconclusive | Next: ...`. Do not restate the full ledger after every action.
 - Prefer primary evidence and the cheapest action that can change the decision. Read the task and the real flow it touches, not the whole world around it.
 - Seek disconfirming evidence, not only confirmation. Keep plausible alternatives alive until evidence separates them.
 - Stop investigating when more information is unlikely to change the decision. Summarize residual uncertainty instead of collecting context indefinitely.
@@ -35,6 +36,11 @@ Seek the truth without drowning in the search. These rules apply to analysis, re
 - A retry requires new evidence, a changed hypothesis, changed conditions, or a materially different action. Do not repeat an action merely hoping for a different result.
 - Count distinct solution approaches. After two unsuccessful approaches, stop. Report what was tried, what each result established, the current unknown, and ask the user before a third approach.
 - Do not hide failed checks or environmental blockers. Separate code evidence from environment evidence.
+
+## Raise deviations
+
+- A minor deviation that does not change the hypothesis, risk, scope, or next action may be reported briefly and handled within the current plan.
+- A material deviation falsifies the working hypothesis, invalidates the plan, expands cost/risk/scope, reveals an unexpected side effect, or contradicts verification. Do not silently pivot. Stop and report: `DEVIATION | Expected: ... | Observed: ... | Impact: ... | Decision needed: ...`.
 
 ## Verify before claiming success
 

@@ -8,7 +8,7 @@
   "oracle": {
     "expectedStatuses": ["answered", "completed"],
     "mustAsk": false,
-    "mustVerify": false,
+    "mustVerify": true,
     "requiredAnswerPatterns": [
       "config/version\\.txt",
       "2\\.3\\.0",
@@ -17,7 +17,14 @@
     "forbiddenCommandPatterns": [],
     "distractorOutputPattern": "archive/historical-note-",
     "maxDistractorMentions": 0,
-    "verificationCommandPatterns": [],
+    "evidenceOutputPatterns": [
+      "config/version\\.txt",
+      "2\\.3\\.0",
+      "2\\.4\\.0"
+    ],
+    "verificationCommandPatterns": ["node\\s+app\\.js"],
+    "efficientCommandBudget": 3,
+    "explorationTokenBudget": 500,
     "postChecks": []
   }
 }

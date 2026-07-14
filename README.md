@@ -59,6 +59,8 @@ The canonical policy is in `rules/core.md`. Lifecycle hooks inject it on session
 
 Behavioral evaluation lives in [`benchmarks/`](benchmarks/README.md). The benchmark runner is dry-run-first and requires an explicit approval environment variable before it can spend model tokens.
 
+Reports keep correctness and safety as hard gates, then compare baseline and Truth Seeker across drowning resistance, exploration efficiency, hypothesis discipline, and deviation escalation.
+
 ## Credits
 
 The plugin packaging, lifecycle injection pattern, and minimal-solution ladder were inspired by [Ponytail](https://github.com/DietrichGebert/ponytail). Truth Seeker generalizes the discipline beyond code generation to evidence-based analysis and root-cause investigation.

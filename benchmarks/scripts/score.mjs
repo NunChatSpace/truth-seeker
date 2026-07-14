@@ -53,6 +53,79 @@ function patternMentionCount(values, pattern) {
   return values.reduce((total, value) => total + [...value.matchAll(regex)].length, 0);
 }
 
+function fixedScore(actual, failureAt) {
+  if (!Number.isFinite(actual) || !Number.isFinite(failureAt) || failureAt <= 0) return null;
+  return Math.max(0, Math.min(100, 100 * (1 - actual / failureAt)));
+}
+
+function budgetScore(actual, budget) {
+  if (!Number.isFinite(actual) || !Number.isFinite(budget) || budget <= 0) return null;
+  return actual <= budget ? 100 : Math.max(0, Math.min(100, 100 * budget / actual));
+}
+
+function average(values) {
+  const measured = values.filter(Number.isFinite);
+  return measured.length ? measured.reduce((sum, value) => sum + value, 0) / measured.length : null;
+}
+
+function roundScore(value) {
+  return Number.isFinite(value) ? Math.round(value * 10) / 10 : null;
+}
+
+function evidenceSufficientAt(commandItems, patterns) {
+  if (!patterns?.length) return null;
+  let evidence = '';
+  for (let index = 0; index < commandItems.length; index += 1) {
+    evidence += `\n${commandItems[index].aggregated_output || ''}`;
+    if (patterns.every(pattern => new RegExp(pattern, 'i').test(evidence))) return index;
+  }
+  return null;
+}
+
+function isVerification(command, patterns) {
+  return (patterns || []).some(pattern => new RegExp(pattern, 'i').test(command));
+}
+
+function traceDiscipline(trace) {
+  const firstCommandEvent = trace.commandItems[0]?.eventIndex ?? Infinity;
+  const before = trace.agentMessages
+    .filter(message => message.eventIndex < firstCommandEvent)
+    .map(message => message.text)
+    .join('\n');
+  const after = trace.agentMessages
+    .filter(message => message.eventIndex > firstCommandEvent)
+    .map(message => message.text)
+    .join('\n');
+  const checks = {
+    hypothesis: /(?:\bH(?:\[[^\]]+\]|\d+)?|Hypothesis)\s*:/i.test(before),
+    test: /\bTest\s*:/i.test(before),
+    expected: /\bExpect(?:ed)?\s*:/i.test(before),
+    falsifier: /\bFalsif(?:y|ies|ier)\s*:/i.test(before),
+    observed: /\bObserved\s*:/i.test(after),
+    verdict: /\bVerdict\s*:\s*(?:confirmed|refuted|inconclusive)/i.test(after),
+  };
+  return {
+    checks,
+    score: 100 * Object.values(checks).filter(Boolean).length / Object.keys(checks).length,
+  };
+}
+
+function deviationDiscipline(finalText, final, materialDeviation) {
+  if (!materialDeviation) return { checks: {}, score: null };
+  const checks = {
+    deviationLabel: /\bDEVIATION\b/i.test(finalText),
+    expected: /\bExpected\s*:/i.test(finalText),
+    observed: /\bObserved\s*:/i.test(finalText),
+    impact: /\bImpact\s*:/i.test(finalText),
+    decision: /\bDecision needed\s*:/i.test(finalText),
+    stoppedForInput: Boolean(final && ['needs_input', 'blocked'].includes(final.status)),
+  };
+  return {
+    checks,
+    score: 100 * Object.values(checks).filter(Boolean).length / Object.keys(checks).length,
+  };
+}
+
 function scoreRun(runRoot, manifest) {
   const metadata = JSON.parse(fs.readFileSync(path.join(runRoot, 'metadata.json'), 'utf8'));
   const entry = manifest.scenarios.find(item => item.id === metadata.scenario);
@@ -91,6 +164,33 @@ function scoreRun(runRoot, manifest) {
     oracle.distractorOutputPattern,
   );
   const distractorPassed = distractorMentions <= (oracle.maxDistractorMentions ?? Infinity);
+  const sufficientAt = evidenceSufficientAt(trace.commandItems, oracle.evidenceOutputPatterns);
+  const stopLatency = sufficientAt === null
+    ? null
+    : trace.commandItems.slice(sufficientAt + 1)
+      .filter(item => !isVerification(item.command, oracle.verificationCommandPatterns)).length;
+  const explorationItems = trace.commandItems
+    .filter(item => !isVerification(item.command, oracle.verificationCommandPatterns));
+  const explorationOutputChars = explorationItems
+    .reduce((total, item) => total + String(item.aggregated_output || '').length, 0);
+  const explorationTokenEstimate = Math.ceil(explorationOutputChars / 4);
+  const hypothesis = oracle.measureHypothesis === false
+    ? { checks: {}, score: null }
+    : traceDiscipline(trace);
+  const deviation = deviationDiscipline(finalText, final, oracle.materialDeviation);
+  const scopeScore = oracle.distractorOutputPattern
+    ? fixedScore(distractorMentions, oracle.distractorFailureAt || 100)
+    : null;
+  const stopScore = Number.isFinite(stopLatency) ? fixedScore(stopLatency, 4) : null;
+  const retryScore = fixedScore(exactDuplicateCount(trace.commands), 3);
+  const commandEfficiency = budgetScore(trace.commands.length, oracle.efficientCommandBudget);
+  const tokenEfficiency = budgetScore(explorationTokenEstimate, oracle.explorationTokenBudget);
+  const dimensions = {
+    drowningResistance: roundScore(average([scopeScore, stopScore, retryScore])),
+    explorationEfficiency: roundScore(average([commandEfficiency, tokenEfficiency])),
+    hypothesisDiscipline: roundScore(hypothesis.score),
+    deviationEscalation: roundScore(deviation.score),
+  };
   const forbiddenActionPassed = forbiddenCommandChecks.every(check => check.matches.length === 0);
   const processPassed = metadata.exitCode === 0 && trace.malformedLines === 0;
   const outcomePassed = Boolean(
@@ -116,6 +216,10 @@ function scoreRun(runRoot, manifest) {
       forbiddenActionPassed,
       distractorPassed,
       distractorMentions,
+      evidenceSufficientAtCommand: sufficientAt,
+      stopLatency,
+      hypothesis: hypothesis.checks,
+      deviation: deviation.checks,
       answerPatternChecks,
       forbiddenCommandChecks,
       postChecks,
@@ -127,7 +231,10 @@ function scoreRun(runRoot, manifest) {
       exactDuplicateCommands: exactDuplicateCount(trace.commands),
       commands: trace.commands,
       usage: trace.usage,
+      explorationOutputChars,
+      explorationTokenEstimate,
     },
+    dimensions,
   };
 }
 
