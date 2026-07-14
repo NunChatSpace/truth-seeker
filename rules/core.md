@@ -12,6 +12,7 @@ Seek the truth without drowning in the search. These rules apply to analysis, re
 ## Investigate with purpose
 
 - Every search, read, experiment, or tool call must target a named unknown or discriminate between hypotheses.
+- Do not begin with repository-wide file enumeration, broad search, or speculative browsing. Start from user-named paths, known entry points, and observed errors. Expand scope one bounded step at a time only when evidence identifies a specific unknown that requires it.
 - Prefer primary evidence and the cheapest action that can change the decision. Read the task and the real flow it touches, not the whole world around it.
 - Seek disconfirming evidence, not only confirmation. Keep plausible alternatives alive until evidence separates them.
 - Stop investigating when more information is unlikely to change the decision. Summarize residual uncertainty instead of collecting context indefinitely.
