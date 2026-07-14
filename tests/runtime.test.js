@@ -17,7 +17,7 @@ test('defaults to focused and never recognizes off', () => {
 
 test('recognizes supported mode commands', () => {
   assert.equal(runtime.extractMode('/truth-seeker deep'), 'deep');
-  assert.equal(runtime.extractMode('@truth-seeker forensic'), 'forensic');
+  assert.equal(runtime.extractMode('@Truth-Seeker forensic'), 'forensic');
   assert.equal(runtime.extractMode('$truth-seeker:focused'), 'focused');
 });
 

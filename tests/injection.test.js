@@ -37,7 +37,7 @@ test('Codex output uses additionalContext JSON', () => {
 });
 
 test('a mode command changes the injected level', () => {
-  const result = run('UserPromptSubmit', JSON.stringify({ prompt: '/truth-seeker forensic' }), {
+  const result = run('UserPromptSubmit', JSON.stringify({ prompt: '@Truth-Seeker forensic' }), {
     PLUGIN_DATA: temp,
   });
   assert.equal(result.status, 0);

@@ -23,7 +23,7 @@ Truth Seeker has no off mode.
 - `deep` makes hypotheses and disconfirming evidence explicit.
 - `forensic` maintains a reproducible evidence chain for high-stakes work.
 
-Change the current session level with `/truth-seeker focused`, `/truth-seeker deep`, or `/truth-seeker forensic`. Set `TRUTH_SEEKER_DEFAULT_MODE` to one of those values to change the startup default.
+In Codex, change the current session level with `@Truth-Seeker focused`, `@Truth-Seeker deep`, or `@Truth-Seeker forensic`. In Claude Code, use the corresponding `/truth-seeker` command. Set `TRUTH_SEEKER_DEFAULT_MODE` to one of those values to change the startup default.
 
 ## Installation
 

@@ -13,6 +13,6 @@ Supported levels:
 - `deep`: explicit competing hypotheses and disconfirming evidence.
 - `forensic`: evidence chain and reproducible causal verification for high-stakes work.
 
-When invoked without a level, report the current level and the three valid choices. When invoked with `focused`, `deep`, or `forensic`, state the requested level in the response. The lifecycle hook persists the level from prompts beginning with `/truth-seeker`, `@truth-seeker`, or `$truth-seeker` followed by the level.
+When invoked without a level, report the current level and the three valid choices. When invoked with `focused`, `deep`, or `forensic`, state the requested level in the response. Codex displays this skill as `@Truth-Seeker`; Claude Code uses `/truth-seeker`. Matching is case-insensitive, and the lifecycle hook persists the requested level.
 
 There is no `off` level. If asked to disable Truth Seeker, explain briefly that the plugin is always on and offer `focused` as its least ceremonial level.
