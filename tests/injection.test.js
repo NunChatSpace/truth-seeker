@@ -34,7 +34,6 @@ test('the injection script emits the complete focused ruleset', () => {
   assert.equal(result.status, 0);
   assert.match(result.stdout, /TRUTH SEEKER ACTIVE - level: focused/);
   assert.match(result.stdout, /After two unsuccessful approaches, stop/);
-  assert.match(result.stdout, /Do not begin with repository-wide file enumeration/);
   assert.match(result.stdout, /H\[id\].*Falsifies/);
   assert.match(result.stdout, /structured hypothesis fields/);
   assert.match(result.stdout, /structured result fields are available/);
@@ -42,9 +41,10 @@ test('the injection script emits the complete focused ruleset', () => {
   assert.match(result.stdout, /DEVIATION.*Decision needed/);
   assert.match(result.stdout, /final summary begin/);
   assert.match(result.stdout, /Focused level/);
-  assert.match(result.stdout, /first probe must start from a user-named or known execution entry point/);
-  assert.match(result.stdout, /Do not use a repository-wide search as the first probe/);
-  assert.match(result.stdout, /Batch reads only for files or symbols already named/);
+  assert.match(result.stdout, /cheapest probe that could falsify it/);
+  assert.match(result.stdout, /Search scope may be broad/);
+  assert.match(result.stdout, /build the replacement hypothesis, eliminate a residual alternative/);
+  assert.match(result.stdout, /repeated or unmapped probe without new evidence is unjustified/);
   assert.match(result.stdout, /Do not reread evidence solely to add line numbers/);
 });
 

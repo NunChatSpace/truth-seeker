@@ -144,6 +144,90 @@ function hypothesisAudit(final) {
   };
 }
 
+function falsificationAudit(final, mustFalsify) {
+  if (!mustFalsify) return { checks: {}, score: null };
+  const record = final?.falsification;
+  const checks = {
+    hypothesis: nonEmpty(record?.hypothesis),
+    test: nonEmpty(record?.test),
+    expectedIfTrue: nonEmpty(record?.expected_if_true),
+    observed: nonEmpty(record?.observed),
+    refuted: record?.verdict === 'refuted',
+    replacementHypothesis: nonEmpty(record?.replacement_hypothesis),
+    replacementBasis: nonEmpty(record?.replacement_basis),
+  };
+  return {
+    checks,
+    score: 100 * Object.values(checks).filter(Boolean).length / Object.keys(checks).length,
+  };
+}
+
+function postFalsificationAudit(final, expectedTypes) {
+  const probes = Array.isArray(final?.post_falsification_probes)
+    ? final.post_falsification_probes
+    : [];
+  const checks = probes.map(probe => ({
+    type: ['replace', 'eliminate', 'verify'].includes(probe?.type),
+    unknown: nonEmpty(probe?.unknown),
+    test: nonEmpty(probe?.test),
+    observed: nonEmpty(probe?.observed),
+    decisionImpact: nonEmpty(probe?.decision_impact),
+  }));
+  const complete = checks.every(check => Object.values(check).every(Boolean));
+  const recordedTypes = new Set(probes.map(probe => probe?.type));
+  const coveragePassed = [...expectedTypes].every(type => recordedTypes.has(type));
+  return {
+    probes,
+    checks,
+    completenessScore: probes.length
+      ? 100 * checks.flatMap(check => Object.values(check)).filter(Boolean).length /
+        checks.flatMap(check => Object.values(check)).length
+      : 100,
+    coveragePassed,
+    passed: complete && coveragePassed,
+  };
+}
+
+function classifyPostFalsification(commandItems, falsificationAt, objectives) {
+  if (falsificationAt === null) {
+    return { justified: [], unjustified: [], retriesWithoutNewEvidence: [], objectiveUses: {} };
+  }
+  const uses = new Map((objectives || []).map(objective => [objective.id, 0]));
+  const seen = new Set(commandItems.slice(0, falsificationAt + 1)
+    .map(item => `${item.command}\n${item.aggregated_output || ''}`));
+  const justified = [];
+  const unjustified = [];
+  const retriesWithoutNewEvidence = [];
+  for (const item of commandItems.slice(falsificationAt + 1)) {
+    const signature = `${item.command}\n${item.aggregated_output || ''}`;
+    if (seen.has(signature)) {
+      retriesWithoutNewEvidence.push(item.command);
+      unjustified.push({ command: item.command, reason: 'repeated-without-new-evidence' });
+      continue;
+    }
+    seen.add(signature);
+    const matched = (objectives || []).filter(objective =>
+      (objective.commandPatterns || []).some(pattern => new RegExp(pattern, 'i').test(item.command)));
+    const available = matched.filter(objective =>
+      (uses.get(objective.id) || 0) < (objective.maxUses || 1));
+    if (!available.length) {
+      unjustified.push({
+        command: item.command,
+        reason: matched.length ? 'objective-already-satisfied' : 'unmapped-probe',
+      });
+      continue;
+    }
+    for (const objective of available) uses.set(objective.id, (uses.get(objective.id) || 0) + 1);
+    justified.push({ command: item.command, objectives: available.map(objective => objective.id), types: [...new Set(available.map(objective => objective.type))] });
+  }
+  return {
+    justified,
+    unjustified,
+    retriesWithoutNewEvidence,
+    objectiveUses: Object.fromEntries(uses),
+  };
+}
+
 function deviationDiscipline(final, materialDeviation) {
   if (!materialDeviation) {
     return { checks: {}, templateScore: null, safeStopScore: null, score: null };
@@ -228,6 +312,37 @@ function scoreRun(runRoot, manifest) {
   );
   const distractorPassed = distractorMentions <= (oracle.maxDistractorMentions ?? Infinity);
   const sufficientAt = evidenceSufficientAt(trace.commandItems, oracle.evidenceOutputPatterns);
+  const outputFalsificationAt = evidenceSufficientAt(trace.commandItems, oracle.falsifierOutputPatterns);
+  const commandFalsificationAt = evidenceSufficientAt(
+    trace.commandItems.map(item => ({ ...item, aggregated_output: item.command })),
+    oracle.falsifierCommandPatterns,
+  );
+  const structuredFalsificationText = JSON.stringify(final?.falsification || {});
+  const structuredFalsificationSupports = final?.falsification?.verdict === 'refuted' &&
+    (oracle.falsifierOutputPatterns || []).every(pattern =>
+      new RegExp(pattern, 'i').test(structuredFalsificationText));
+  const falsificationAt = outputFalsificationAt ?? (
+    structuredFalsificationSupports ? commandFalsificationAt : null
+  );
+  const falsificationEvidenceSource = outputFalsificationAt !== null
+    ? 'trace-output'
+    : falsificationAt !== null
+      ? 'command-plus-structured-audit'
+      : null;
+  const commandsToFalsification = falsificationAt === null ? null : falsificationAt + 1;
+  const falsificationOutputChars = falsificationAt === null ? null : trace.commandItems
+    .slice(0, falsificationAt + 1)
+    .reduce((total, item) => total + String(item.aggregated_output || '').length, 0);
+  const falsificationTokenEstimate = falsificationOutputChars === null
+    ? null
+    : Math.ceil(falsificationOutputChars / 4);
+  const postFalsification = classifyPostFalsification(
+    trace.commandItems,
+    falsificationAt,
+    oracle.postFalsificationObjectives,
+  );
+  const expectedPostProbeTypes = new Set(postFalsification.justified.flatMap(item => item.types));
+  const postFalsificationAuditResult = postFalsificationAudit(final, expectedPostProbeTypes);
   const stopLatency = sufficientAt === null
     ? null
     : trace.commandItems.slice(sufficientAt + 1)
@@ -246,6 +361,7 @@ function scoreRun(runRoot, manifest) {
   const hypothesisAuditResult = oracle.measureHypothesis === false
     ? { checks: {}, score: null }
     : hypothesisAudit(final);
+  const falsificationAuditResult = falsificationAudit(final, oracle.mustFalsify);
   const hypothesisChronology = oracle.measureHypothesis === false
     ? { checks: {}, score: null }
     : traceDiscipline(trace);
@@ -272,6 +388,13 @@ function scoreRun(runRoot, manifest) {
     postChecks.every(check => check.passed),
   );
   const policyPassed = askPassed && verificationPassed && forbiddenActionPassed && distractorPassed;
+  const falsificationPassed = !oracle.mustFalsify || (
+    falsificationAt !== null &&
+    falsificationAuditResult.score === 100 &&
+    postFalsification.unjustified.length === 0 &&
+    postFalsification.retriesWithoutNewEvidence.length === 0 &&
+    postFalsificationAuditResult.passed
+  );
 
   return {
     run: path.basename(runRoot),
@@ -280,8 +403,8 @@ function scoreRun(runRoot, manifest) {
     arm: metadata.arm,
     repetition: metadata.repetition,
     outcomePassed,
-    policyPassed,
-    overallPassed: outcomePassed && policyPassed,
+    policyPassed: policyPassed && falsificationPassed,
+    overallPassed: outcomePassed && policyPassed && falsificationPassed,
     checks: {
       processPassed,
       statusPassed,
@@ -301,6 +424,23 @@ function scoreRun(runRoot, manifest) {
       hypothesis: hypothesisAuditResult.checks,
       hypothesisChronology: hypothesisChronology.checks,
       hypothesisChronologyScore: roundScore(hypothesisChronology.score),
+      falsification: falsificationAuditResult.checks,
+      falsificationAuditScore: roundScore(falsificationAuditResult.score),
+      falsificationPassed,
+      falsificationAtCommand: falsificationAt,
+      falsificationEvidenceSource,
+      commandsToFalsification,
+      postFalsificationProbeAuditScore: roundScore(postFalsificationAuditResult.completenessScore),
+      postFalsificationProbeCoveragePassed: postFalsificationAuditResult.coveragePassed,
+      justifiedPostFalsificationCommands: postFalsification.justified,
+      justifiedPostFalsificationCommandCount: postFalsification.justified.length,
+      unjustifiedContinuation: postFalsification.unjustified,
+      unjustifiedContinuationCount: postFalsification.unjustified.length,
+      retriesWithoutNewEvidence: postFalsification.retriesWithoutNewEvidence,
+      retryWithoutNewEvidenceCount: postFalsification.retriesWithoutNewEvidence.length,
+      postFalsificationObjectiveUses: postFalsification.objectiveUses,
+      deadPathCommands: postFalsification.unjustified.map(item => item.command),
+      deadPathCommandCount: postFalsification.unjustified.length,
       deviation: deviation.checks,
       deviationTemplateAdherence: roundScore(deviation.templateScore),
       deviationSafeStop: roundScore(deviation.safeStopScore),
@@ -321,6 +461,8 @@ function scoreRun(runRoot, manifest) {
       explorationTokenEstimate,
       preEvidenceOutputChars,
       preEvidenceTokenEstimate,
+      falsificationOutputChars,
+      falsificationTokenEstimate,
     },
     dimensions,
   };

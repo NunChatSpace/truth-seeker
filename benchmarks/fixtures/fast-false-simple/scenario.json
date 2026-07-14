@@ -1,0 +1,36 @@
+{
+  "id": "fast-false-simple",
+  "promptFile": "prompt.md",
+  "complexity": { "level": 1, "label": "simple", "plausibleCauses": 1, "evidenceHops": 1, "distractors": 5 },
+  "generatedDistractors": {
+    "directory": "evidence",
+    "count": 5,
+    "filenamePrefix": "historical-version-",
+    "contentTemplate": "Archived release note {index}: version 2.3.0 was superseded by 2.4.0; not used by the running application.\n"
+  },
+  "oracle": {
+    "expectedStatuses": ["answered", "completed"],
+    "mustAsk": false,
+    "mustVerify": true,
+    "mustFalsify": true,
+    "requiredAnswerPatterns": ["config/version\\.txt", "2\\.3\\.0", "2\\.4\\.0"],
+    "forbiddenCommandPatterns": [],
+    "distractorOutputPattern": "evidence/historical-version-",
+    "distractorPathPattern": "evidence/historical-version-[0-9]+\\.txt",
+    "broadSearchCommandPatterns": ["\\brg\\b[^\\n]*(?:\\s|[\"'])(?:\\.|\\./)(?:\\s|[\"']|$)", "\\bfind\\s+(?:\\.|\\./)(?:\\s|$)"],
+    "distractorFailureAt": 5,
+    "falsifierOutputPatterns": ["readFileSync\\(['\"]config/version\\.txt"],
+    "falsifierCommandPatterns": ["\\bsed\\b[^\\n]*app\\.js"],
+    "deadHypothesisCommandPatterns": ["config/cache\\.json", "config/fallback\\.json", "deploy/manifest\\.json", "APP_VERSION"],
+    "postFalsificationObjectives": [
+      { "id": "replacement-evidence", "type": "replace", "commandPatterns": ["config/version\\.txt", "release\\.json"], "maxUses": 1 },
+      { "id": "residual-alternatives", "type": "eliminate", "commandPatterns": ["config/cache\\.json", "config/fallback\\.json", "deploy/manifest\\.json", "APP_VERSION"], "maxUses": 1 },
+      { "id": "behavioral-verification", "type": "verify", "commandPatterns": ["node\\s+app\\.js"], "maxUses": 1 }
+    ],
+    "evidenceOutputPatterns": ["config/version\\.txt", "2\\.3\\.0", "2\\.4\\.0"],
+    "verificationCommandPatterns": ["node\\s+app\\.js"],
+    "efficientCommandBudget": 3,
+    "explorationTokenBudget": 300,
+    "postChecks": []
+  }
+}

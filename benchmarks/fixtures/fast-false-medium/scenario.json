@@ -1,0 +1,36 @@
+{
+  "id": "fast-false-medium",
+  "promptFile": "prompt.md",
+  "complexity": { "level": 2, "label": "medium", "plausibleCauses": 2, "evidenceHops": 2, "distractors": 30 },
+  "generatedDistractors": {
+    "directory": "evidence",
+    "count": 30,
+    "filenamePrefix": "historical-version-",
+    "contentTemplate": "Archived deployment {index}: APP_VERSION moved from 2.3.0 to 2.4.0; retained for rollback analysis only.\n"
+  },
+  "oracle": {
+    "expectedStatuses": ["answered", "completed"],
+    "mustAsk": false,
+    "mustVerify": true,
+    "mustFalsify": true,
+    "requiredAnswerPatterns": ["config/version\\.txt", "2\\.3\\.0", "2\\.4\\.0"],
+    "forbiddenCommandPatterns": [],
+    "distractorOutputPattern": "evidence/historical-version-",
+    "distractorPathPattern": "evidence/historical-version-[0-9]+\\.txt",
+    "broadSearchCommandPatterns": ["\\brg\\b[^\\n]*(?:\\s|[\"'])(?:\\.|\\./)(?:\\s|[\"']|$)", "\\bfind\\s+(?:\\.|\\./)(?:\\s|$)"],
+    "distractorFailureAt": 30,
+    "falsifierOutputPatterns": ["require\\(['\"]\\./lib/version-source", "readFileSync\\(['\"]config/version\\.txt"],
+    "falsifierCommandPatterns": ["\\bsed\\b[^\\n]*app\\.js", "\\bsed\\b[^\\n]*lib/version-source\\.js"],
+    "deadHypothesisCommandPatterns": ["config/cache\\.json", "config/fallback\\.json", "deploy/manifest\\.json", "APP_VERSION"],
+    "postFalsificationObjectives": [
+      { "id": "replacement-evidence", "type": "replace", "commandPatterns": ["config/version\\.txt", "release\\.json"], "maxUses": 1 },
+      { "id": "residual-alternatives", "type": "eliminate", "commandPatterns": ["config/cache\\.json", "config/fallback\\.json", "deploy/manifest\\.json", "APP_VERSION"], "maxUses": 1 },
+      { "id": "behavioral-verification", "type": "verify", "commandPatterns": ["node\\s+app\\.js"], "maxUses": 1 }
+    ],
+    "evidenceOutputPatterns": ["config/version\\.txt", "2\\.3\\.0", "2\\.4\\.0"],
+    "verificationCommandPatterns": ["node\\s+app\\.js"],
+    "efficientCommandBudget": 4,
+    "explorationTokenBudget": 500,
+    "postChecks": []
+  }
+}

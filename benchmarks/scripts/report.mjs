@@ -52,6 +52,13 @@ function aggregate(scores) {
       dimensions: Object.fromEntries(DIMENSIONS.map(([key]) => [key, { total: 0, samples: 0 }])),
       deviationTemplate: { total: 0, samples: 0 },
       deviationSafeStop: { total: 0, samples: 0 },
+      falsificationAudit: { total: 0, samples: 0 },
+      commandsToFalsification: { total: 0, samples: 0 },
+      falsificationTokenEstimate: { total: 0, samples: 0 },
+      justifiedPostFalsification: 0,
+      unjustifiedContinuation: 0,
+      retryWithoutEvidence: 0,
+      postProbeAudit: { total: 0, samples: 0 },
     };
     arm.runs += 1;
     arm.outcomePassed += Number(score.outcomePassed);
@@ -89,6 +96,25 @@ function aggregate(scores) {
       arm.deviationSafeStop.total += score.checks.deviationSafeStop;
       arm.deviationSafeStop.samples += 1;
     }
+    if (Number.isFinite(score.checks.falsificationAuditScore)) {
+      arm.falsificationAudit.total += score.checks.falsificationAuditScore;
+      arm.falsificationAudit.samples += 1;
+    }
+    if (Number.isFinite(score.checks.commandsToFalsification)) {
+      arm.commandsToFalsification.total += score.checks.commandsToFalsification;
+      arm.commandsToFalsification.samples += 1;
+    }
+    if (Number.isFinite(score.trace.falsificationTokenEstimate)) {
+      arm.falsificationTokenEstimate.total += score.trace.falsificationTokenEstimate;
+      arm.falsificationTokenEstimate.samples += 1;
+    }
+    arm.justifiedPostFalsification += score.checks.justifiedPostFalsificationCommandCount || 0;
+    arm.unjustifiedContinuation += score.checks.unjustifiedContinuationCount || 0;
+    arm.retryWithoutEvidence += score.checks.retryWithoutNewEvidenceCount || 0;
+    if (Number.isFinite(score.checks.postFalsificationProbeAuditScore)) {
+      arm.postProbeAudit.total += score.checks.postFalsificationProbeAuditScore;
+      arm.postProbeAudit.samples += 1;
+    }
   }
 
   for (const arm of Object.values(arms)) {
@@ -100,6 +126,10 @@ function aggregate(scores) {
       ? arm.deviationTemplate.total / arm.deviationTemplate.samples : null;
     arm.deviationSafeStopScore = arm.deviationSafeStop.samples
       ? arm.deviationSafeStop.total / arm.deviationSafeStop.samples : null;
+    arm.falsificationAuditScore = arm.falsificationAudit.samples
+      ? arm.falsificationAudit.total / arm.falsificationAudit.samples : null;
+    arm.postProbeAuditScore = arm.postProbeAudit.samples
+      ? arm.postProbeAudit.total / arm.postProbeAudit.samples : null;
   }
   return arms;
 }
@@ -117,6 +147,10 @@ function markdownReport(summary, arms) {
   ];
   for (const [name, arm] of Object.entries(arms)) {
     lines.push(`| ${name} | ${percent(arm.outcomePassed, arm.runs)} | ${percent(arm.policyPassed, arm.runs)} | ${percent(arm.overallPassed, arm.runs)} | ${percent(arm.verificationPassed, arm.runs)} | ${percent(arm.forbiddenActionPassed, arm.runs)} |`);
+  }
+  lines.push('', '## Fast falsification', '', '| Arm | Falsification audit | Avg commands to false | Output proxy to false | Necessary post-false | Unjustified continuation | Retry without evidence | Probe audit |', '| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |');
+  for (const [name, arm] of Object.entries(arms)) {
+    lines.push(`| ${name} | ${formatDimension(arm.falsificationAuditScore)} | ${mean(arm.commandsToFalsification.total, arm.commandsToFalsification.samples)} | ${mean(arm.falsificationTokenEstimate.total, arm.falsificationTokenEstimate.samples)} | ${arm.justifiedPostFalsification} | ${arm.unjustifiedContinuation} | ${arm.retryWithoutEvidence} | ${formatDimension(arm.postProbeAuditScore)} |`);
   }
   lines.push('', '## Behavior profile', '', '| Arm | Drowning resistance | Exploration efficiency | Hypothesis audit | Deviation escalation |', '| --- | ---: | ---: | ---: | ---: |');
   for (const [name, arm] of Object.entries(arms)) {

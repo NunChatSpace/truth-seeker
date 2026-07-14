@@ -6,6 +6,8 @@
     "status",
     "summary",
     "hypothesis",
+    "falsification",
+    "post_falsification_probes",
     "result",
     "deviation",
     "facts",
@@ -36,6 +38,40 @@
         },
         { "type": "null" }
       ]
+    },
+    "falsification": {
+      "anyOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["hypothesis", "test", "expected_if_true", "observed", "verdict", "replacement_hypothesis", "replacement_basis"],
+          "properties": {
+            "hypothesis": { "type": "string" },
+            "test": { "type": "string" },
+            "expected_if_true": { "type": "string" },
+            "observed": { "type": "string" },
+            "verdict": { "type": "string", "enum": ["confirmed", "refuted", "inconclusive"] },
+            "replacement_hypothesis": { "type": "string" },
+            "replacement_basis": { "type": "string" }
+          }
+        },
+        { "type": "null" }
+      ]
+    },
+    "post_falsification_probes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "unknown", "test", "observed", "decision_impact"],
+        "properties": {
+          "type": { "type": "string", "enum": ["replace", "eliminate", "verify"] },
+          "unknown": { "type": "string" },
+          "test": { "type": "string" },
+          "observed": { "type": "string" },
+          "decision_impact": { "type": "string" }
+        }
+      }
     },
     "result": {
       "type": "object",

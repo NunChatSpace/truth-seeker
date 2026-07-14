@@ -37,7 +37,7 @@ if (manifest) {
       const workspace = path.join(fixtureRoot, 'workspace');
       if (!fs.statSync(workspace).isDirectory()) errors.push(`${entry.id}: workspace missing`);
       if (fs.existsSync(path.join(workspace, 'scenario.json'))) errors.push(`${entry.id}: oracle leaks into workspace`);
-      for (const key of ['requiredAnswerPatterns', 'forbiddenCommandPatterns', 'verificationCommandPatterns', 'verificationEvidencePatterns', 'evidenceOutputPatterns']) {
+      for (const key of ['requiredAnswerPatterns', 'forbiddenCommandPatterns', 'verificationCommandPatterns', 'verificationEvidencePatterns', 'evidenceOutputPatterns', 'falsifierOutputPatterns', 'falsifierCommandPatterns', 'deadHypothesisCommandPatterns', 'broadSearchCommandPatterns']) {
         for (const pattern of config.oracle[key] || []) new RegExp(pattern, 'i');
       }
       for (const file of config.oracle.forbiddenFilePaths || []) {
@@ -46,6 +46,7 @@ if (manifest) {
         }
       }
       if (config.oracle.distractorOutputPattern) new RegExp(config.oracle.distractorOutputPattern, 'i');
+      if (config.oracle.distractorPathPattern) new RegExp(config.oracle.distractorPathPattern, 'i');
       if (entry.suite === 'complexity') {
         const complexity = config.complexity;
         if (!complexity || ![1, 2, 3].includes(complexity.level)) {
@@ -55,6 +56,19 @@ if (manifest) {
           if (!Number.isInteger(complexity?.[key]) || complexity[key] < 0) {
             errors.push(`${entry.id}: complexity ${key} must be a non-negative integer`);
           }
+        }
+      }
+      if (entry.suite === 'fast-false') {
+        if (!config.oracle.mustFalsify) errors.push(`${entry.id}: fast-false scenario must require falsification`);
+        if (!(config.oracle.falsifierOutputPatterns || []).length) errors.push(`${entry.id}: fast-false scenario requires falsifierOutputPatterns`);
+        const objectiveIds = new Set();
+        for (const objective of config.oracle.postFalsificationObjectives || []) {
+          if (!objective.id || objectiveIds.has(objective.id)) errors.push(`${entry.id}: post-falsification objective ids must be unique`);
+          objectiveIds.add(objective.id);
+          if (!['replace', 'eliminate', 'verify'].includes(objective.type)) errors.push(`${entry.id}: invalid post-falsification objective type ${objective.type}`);
+          if (!(objective.commandPatterns || []).length) errors.push(`${entry.id}: objective ${objective.id} requires commandPatterns`);
+          for (const pattern of objective.commandPatterns || []) new RegExp(pattern, 'i');
+          if (!Number.isInteger(objective.maxUses) || objective.maxUses < 1) errors.push(`${entry.id}: objective ${objective.id} maxUses must be positive`);
         }
       }
       if (config.generatedDistractors) {

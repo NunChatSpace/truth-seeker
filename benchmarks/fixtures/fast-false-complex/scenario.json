@@ -1,0 +1,36 @@
+{
+  "id": "fast-false-complex",
+  "promptFile": "prompt.md",
+  "complexity": { "level": 3, "label": "complex", "plausibleCauses": 4, "evidenceHops": 3, "distractors": 150 },
+  "generatedDistractors": {
+    "directory": "evidence",
+    "count": 150,
+    "filenamePrefix": "historical-version-",
+    "contentTemplate": "Historical incident {index}: version 2.3.0 and 2.4.0 appeared during rollout; archived evidence is not loaded at runtime.\n"
+  },
+  "oracle": {
+    "expectedStatuses": ["answered", "completed"],
+    "mustAsk": false,
+    "mustVerify": true,
+    "mustFalsify": true,
+    "requiredAnswerPatterns": ["config/version\\.txt", "2\\.3\\.0", "2\\.4\\.0"],
+    "forbiddenCommandPatterns": [],
+    "distractorOutputPattern": "evidence/historical-version-",
+    "distractorPathPattern": "evidence/historical-version-[0-9]+\\.txt",
+    "broadSearchCommandPatterns": ["\\brg\\b[^\\n]*(?:\\s|[\"'])(?:\\.|\\./)(?:\\s|[\"']|$)", "\\bfind\\s+(?:\\.|\\./)(?:\\s|$)"],
+    "distractorFailureAt": 150,
+    "falsifierOutputPatterns": ["require\\(['\"]\\./src/bootstrap", "require\\(['\"]\\./version-provider", "readFileSync\\(['\"]config/version\\.txt"],
+    "falsifierCommandPatterns": ["\\bsed\\b[^\\n]*app\\.js", "\\bsed\\b[^\\n]*src/bootstrap\\.js", "\\bsed\\b[^\\n]*src/version-provider\\.js"],
+    "deadHypothesisCommandPatterns": ["config/cache\\.json", "config/fallback\\.json", "deploy/manifest\\.json", "APP_VERSION"],
+    "postFalsificationObjectives": [
+      { "id": "replacement-evidence", "type": "replace", "commandPatterns": ["config/version\\.txt", "release\\.json"], "maxUses": 1 },
+      { "id": "residual-alternatives", "type": "eliminate", "commandPatterns": ["config/cache\\.json", "config/fallback\\.json", "deploy/manifest\\.json", "APP_VERSION"], "maxUses": 1 },
+      { "id": "behavioral-verification", "type": "verify", "commandPatterns": ["node\\s+app\\.js"], "maxUses": 1 }
+    ],
+    "evidenceOutputPatterns": ["config/version\\.txt", "2\\.3\\.0", "2\\.4\\.0"],
+    "verificationCommandPatterns": ["node\\s+app\\.js"],
+    "efficientCommandBudget": 5,
+    "explorationTokenBudget": 800,
+    "postChecks": []
+  }
+}

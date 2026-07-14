@@ -8,7 +8,8 @@
     "test": "node scripts/test.mjs",
     "benchmark:validate": "node benchmarks/scripts/validate.mjs",
     "benchmark:plan": "node benchmarks/scripts/run.mjs",
-    "benchmark:complexity": "node benchmarks/scripts/complexity.mjs"
+    "benchmark:complexity": "node benchmarks/scripts/complexity.mjs",
+    "benchmark:falsification": "node benchmarks/scripts/falsification.mjs"
   },
   "engines": {
     "node": ">=18"

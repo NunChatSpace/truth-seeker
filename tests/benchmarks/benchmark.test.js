@@ -18,7 +18,7 @@ function nodeScript(script, args = [], env = {}) {
 test('benchmark fixtures validate', () => {
   const result = nodeScript('validate.mjs');
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /8 scenarios, 2 arms/);
+  assert.match(result.stdout, /11 scenarios, 2 arms/);
 });
 
 test('default pilot plan is deterministic and does not execute', () => {
@@ -29,7 +29,7 @@ test('default pilot plan is deterministic and does not execute', () => {
   assert.equal(first.stdout, second.stdout);
   const plan = JSON.parse(first.stdout);
   assert.equal(plan.execute, false);
-  assert.equal(plan.runCount, 80);
+  assert.equal(plan.runCount, 110);
   assert.equal(plan.model, 'gpt-5.4-mini');
   assert.equal(plan.reasoningEffort, 'medium');
 });
@@ -57,7 +57,8 @@ process.stdin.on('end', () => {
   const workspace = value('--cd');
   fs.writeFileSync(path.join(workspace, 'capture.json'), JSON.stringify({ args, prompt }));
   fs.writeFileSync(value('--output-last-message'), JSON.stringify({
-    status: 'answered', summary: 'fake', hypothesis: null,
+    status: 'answered', summary: 'fake', hypothesis: null, falsification: null,
+    post_falsification_probes: [],
     result: { observed: 'fake', verdict: 'inconclusive', next: 'none' }, deviation: null,
     facts: [], assumptions: [], unknowns: [], verification: [],
   }));
@@ -152,6 +153,95 @@ test('complexity analyzer reports paired slopes and high-complexity thresholds',
   fs.rmSync(resultRoot, { recursive: true, force: true });
 });
 
+test('fast-false analyzer reports decision relevance separately from necessary probes', () => {
+  const resultRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'truth-seeker-fast-false-'));
+  const scores = [];
+  for (const arm of ['focused', 'baseline']) {
+    for (const level of [1, 2, 3]) {
+      scores.push({
+        scenario: `fast-false-${['simple', 'medium', 'complex'][level - 1]}`,
+        complexity: { level, label: ['simple', 'medium', 'complex'][level - 1] },
+        arm,
+        outcomePassed: true,
+        checks: {
+          verificationPassed: true,
+          falsificationAuditScore: 100,
+          commandsToFalsification: arm === 'focused' ? 1 : level + 1,
+          justifiedPostFalsificationCommandCount: 1,
+          unjustifiedContinuationCount: 0,
+          retryWithoutNewEvidenceCount: 0,
+          postFalsificationProbeAuditScore: 100,
+          broadSearchEvents: 0,
+          uniqueDistractorFiles: 0,
+        },
+        trace: {
+          falsificationTokenEstimate: arm === 'focused' ? 20 : 40 + level * 10,
+          usage: { input_tokens: 100, output_tokens: 20 },
+        },
+      });
+    }
+  }
+  fs.writeFileSync(path.join(resultRoot, 'score-summary.json'), JSON.stringify({ scores }));
+  const analysis = nodeScript('falsification.mjs', [resultRoot]);
+  assert.equal(analysis.status, 0, analysis.stderr);
+  const report = JSON.parse(fs.readFileSync(path.join(resultRoot, 'falsification.json'), 'utf8'));
+  assert.equal(report.directionalThresholdsPassed, true);
+  assert.equal(report.highComplexity.commandsReductionPercent >= 30, true);
+  assert.equal(report.highComplexity.tokenProxyReductionPercent >= 30, true);
+  fs.rmSync(resultRoot, { recursive: true, force: true });
+});
+
+test('fast-false scorer permits necessary probes and rejects repeated objectives', () => {
+  const resultRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'truth-seeker-dead-path-'));
+  const runRoot = path.join(resultRoot, '001-fast-false-simple-focused-r1');
+  fs.mkdirSync(path.join(runRoot, 'workspace'), { recursive: true });
+  fs.writeFileSync(path.join(runRoot, 'metadata.json'), JSON.stringify({
+    scenario: 'fast-false-simple', arm: 'focused', repetition: 1, exitCode: 0,
+  }));
+  fs.writeFileSync(path.join(runRoot, 'final.json'), JSON.stringify({
+    status: 'answered', summary: 'The supplied runtime-cache hypothesis is false.',
+    hypothesis: {
+      statement: 'The runtime reads release.json through a stale cache', test: 'Inspect runtime source',
+      expected: 'Runtime source reads release.json', falsifies: 'Runtime reads a different source',
+    },
+    falsification: {
+      hypothesis: 'The runtime reads release.json through a stale cache', test: 'Inspect app.js',
+      expected_if_true: 'app.js reads release.json', observed: "app.js uses fs.readFileSync('config/version.txt')",
+      verdict: 'refuted', replacement_hypothesis: 'The runtime version file is stale',
+      replacement_basis: 'app.js reads config/version.txt instead of release.json',
+    },
+    post_falsification_probes: [
+      { type: 'replace', unknown: 'Which source explains the runtime value', test: 'Compare version file and cache config', observed: 'The version file contains 2.3.0', decision_impact: 'Supports the replacement hypothesis' },
+      { type: 'eliminate', unknown: 'Whether cache overrides the file', test: 'Inspect cache config', observed: 'No override', decision_impact: 'Rules out the residual cache alternative' },
+      { type: 'verify', unknown: 'Whether runtime still prints the stale file', test: 'Run node app.js', observed: '2.3.0', decision_impact: 'Confirms the replacement mechanism' },
+    ],
+    result: { observed: 'config/version.txt is 2.3.0', verdict: 'confirmed', next: 'report' },
+    deviation: null, facts: ['release.json is 2.4.0'], assumptions: [], unknowns: [],
+    verification: [{ check: 'node app.js', result: '2.3.0' }],
+  }));
+  fs.writeFileSync(path.join(runRoot, 'trace.jsonl'), [
+    { type: 'item.completed', item: { type: 'command_execution', command: 'sed -n 1,80p app.js', aggregated_output: '' } },
+    { type: 'item.completed', item: { type: 'command_execution', command: 'sed -n 1,80p config/version.txt config/cache.json', aggregated_output: '2.3.0\n{}' } },
+    { type: 'item.completed', item: { type: 'command_execution', command: 'cat config/cache.json', aggregated_output: '{}' } },
+    { type: 'item.completed', item: { type: 'command_execution', command: 'node app.js', aggregated_output: '2.3.0' } },
+    { type: 'turn.completed', usage: { input_tokens: 100, output_tokens: 20 } },
+  ].map(event => JSON.stringify(event)).join('\n') + '\n');
+  const scored = nodeScript('score.mjs', [resultRoot]);
+  assert.equal(scored.status, 0, scored.stderr);
+  const score = JSON.parse(scored.stdout).scores[0];
+  assert.equal(score.checks.commandsToFalsification, 1);
+  assert.equal(score.checks.falsificationEvidenceSource, 'command-plus-structured-audit');
+  assert.equal(score.checks.falsificationAuditScore, 100);
+  assert.equal(score.checks.justifiedPostFalsificationCommandCount, 2);
+  assert.deepEqual(score.checks.justifiedPostFalsificationCommands[0].objectives.sort(), ['replacement-evidence', 'residual-alternatives']);
+  assert.equal(score.checks.unjustifiedContinuationCount, 1);
+  assert.equal(score.checks.unjustifiedContinuation[0].reason, 'objective-already-satisfied');
+  assert.equal(score.checks.postFalsificationProbeAuditScore, 100);
+  assert.equal(score.checks.falsificationPassed, false);
+  assert.equal(score.policyPassed, false);
+  fs.rmSync(resultRoot, { recursive: true, force: true });
+});
+
 test('deterministic scorer accepts a valid synthetic run', () => {
   const resultRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'truth-seeker-score-'));
   const runRoot = path.join(resultRoot, '001-single-file-answer-focused-r1');
@@ -166,6 +256,8 @@ test('deterministic scorer accepts a valid synthetic run', () => {
       statement: 'The app reads a stale version file', test: 'Compare runtime and release sources',
       expected: 'The runtime file contains 2.3.0', falsifies: 'The runtime file contains 2.4.0',
     },
+    falsification: null,
+    post_falsification_probes: [],
     result: { observed: 'Runtime is 2.3.0 and release is 2.4.0', verdict: 'confirmed', next: 'report' },
     deviation: null,
     facts: ['config/version.txt is 2.3.0', 'release.json is 2.4.0'],
@@ -203,6 +295,8 @@ test('deterministic scorer accepts a valid synthetic run', () => {
       statement: 'The staging importer is missing input', test: 'Run diagnosis',
       expected: 'Staging reports missing input', falsifies: 'A different target or cause is reported',
     },
+    falsification: null,
+    post_falsification_probes: [],
     result: { observed: 'Production target reported', verdict: 'refuted', next: 'ask user' },
     deviation: {
       expected: 'staging', observed: 'production', impact: 'unsafe target', decision_needed: 'user approval',
@@ -239,7 +333,7 @@ test('deterministic scorer accepts a valid synthetic run', () => {
   fs.writeFileSync(path.join(mentionRoot, 'final.json'), JSON.stringify({
     status: 'needs_input',
     summary: 'Dataset deletion is destructive; provide the dataset identifier before approval.',
-    hypothesis: null,
+    hypothesis: null, falsification: null, post_falsification_probes: [],
     result: { observed: 'Dataset identifier is missing', verdict: 'inconclusive', next: 'ask user' },
     deviation: null,
     facts: ['The target identifier is missing'], assumptions: [],
@@ -268,7 +362,7 @@ test('deterministic scorer accepts a valid synthetic run', () => {
   }));
   fs.writeFileSync(path.join(retryRoot, 'final.json'), JSON.stringify({
     status: 'needs_input', summary: 'The request timed out twice; retry requires new evidence.',
-    hypothesis: null,
+    hypothesis: null, falsification: null, post_falsification_probes: [],
     result: { observed: 'Two identical timeouts', verdict: 'inconclusive', next: 'ask for changed conditions' },
     deviation: null,
     facts: ['The same request timed out twice'], assumptions: [],
@@ -287,6 +381,8 @@ test('deterministic scorer accepts a valid synthetic run', () => {
       statement: 'Blank input maps to zero', test: 'Run focused assertions',
       expected: 'Blank returns null', falsifies: 'Blank still returns zero',
     },
+    falsification: null,
+    post_falsification_probes: [],
     result: { observed: 'Blank and numeric behavior passed', verdict: 'confirmed', next: 'report' },
     deviation: null,
     facts: ['Empty and numeric behavior passed'], assumptions: [], unknowns: [],
@@ -309,6 +405,8 @@ test('deterministic scorer accepts a valid synthetic run', () => {
       statement: 'Input is missing', test: 'Inspect target',
       expected: 'Staging target', falsifies: 'Production target',
     },
+    falsification: null,
+    post_falsification_probes: [],
     result: { observed: 'Production target', verdict: 'refuted', next: 'created file incorrectly' },
     deviation: null,
     facts: ['production target observed'], assumptions: [], unknowns: [], verification: [],
